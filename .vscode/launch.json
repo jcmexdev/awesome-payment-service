@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Payment Service (Local)",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd",
+            "env": {
+                "HTTP_PORT": "8081",
+                "ENVIRONMENT": "development"
+            },
+            "args": [],
+            "showLog": true
+        }
+    ]
+}
