@@ -1,4 +1,4 @@
-package router
+package http
 
 import (
 	"github.com/go-chi/chi/v5"
@@ -6,12 +6,49 @@ import (
 	"github.com/jcmexdev/payment-service/internal/infra/http/handler"
 )
 
-func NewRouter() *chi.Mux {
-	router := chi.NewRouter()
-	router.Use(middleware.Logger)
-	router.Use(middleware.Recoverer)
+type router struct {
+	healthController   handler.HealthCheckController
+	paymentsController handler.PaymentsController
+}
 
-	router.Get("/ping", handler.HealthCheck)
-	router.Post("/v1/payments", handler.CreatePaymentHandler)
-	return router
+type Options func(r *router)
+
+func WithHealthController(checkHandler handler.HealthCheckController) Options {
+	return func(r *router) {
+		r.healthController = checkHandler
+	}
+}
+
+func WithPaymentsController(checkHandler handler.PaymentsController) Options {
+	return func(r *router) {
+		r.paymentsController = checkHandler
+	}
+}
+
+func NewRouter(options ...Options) *chi.Mux {
+	r := &router{}
+	mux := chi.NewRouter()
+	mux.Use(middleware.Logger)
+	mux.Use(middleware.Recoverer)
+	for _, option := range options {
+		option(r)
+	}
+	r.mapHealthRoutes(mux)
+	r.mapPaymentsRouter(mux)
+
+	return mux
+}
+
+func (r router) mapHealthRoutes(mux *chi.Mux) {
+	if r.healthController == nil {
+		panic("health controller is required")
+	}
+	mux.Get("/health", r.healthController.Health)
+}
+
+func (r router) mapPaymentsRouter(mux *chi.Mux) {
+	if r.paymentsController == nil {
+		panic("health controller is required")
+	}
+	mux.Post("/v1/payments", r.paymentsController.CreatePayment)
 }

@@ -1,0 +1,108 @@
+package sqlite
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/jcmexdev/payment-service/internal/domain"
+)
+
+type IdempotencyCache struct {
+	db *sql.DB
+}
+
+func NewIdempotencyCache(db *sql.DB) (*IdempotencyCache, error) {
+	query := `
+	CREATE TABLE IF NOT EXISTS idempotency_records (
+		key TEXT PRIMARY KEY,
+		status TEXT NOT NULL,
+		response_code INTEGER,
+		response_body BLOB,
+		expires_at DATETIME NOT NULL,
+		created_at DATETIME NOT NULL
+	);`
+
+	if _, err := db.Exec(query); err != nil {
+		return nil, fmt.Errorf("failed to create idempotency table in sqlite: %w", err)
+	}
+
+	return &IdempotencyCache{db: db}, nil
+}
+
+func (i IdempotencyCache) Lock(ctx context.Context, key string, ttl time.Duration) (bool, *domain.IdempotencyRecord, error) {
+	now := time.Now().UTC()
+	expiresAt := now.Add(ttl)
+
+	_, _ = i.db.ExecContext(ctx, "DELETE FROM idempotency_records WHERE expires_at < ?", now)
+
+	insertQuery := `
+		INSERT INTO idempotency_records (key, status, expires_at, created_at) 
+		VALUES (?, ?, ?, ?);`
+
+	_, err := i.db.ExecContext(ctx, insertQuery, key, domain.IdempotencyStatusProcessing, expiresAt, now)
+
+	if err == nil {
+		return true, nil, nil
+	}
+
+	selectQuery := `
+		SELECT key, status, response_code, response_body, created_at 
+		FROM idempotency_records 
+		WHERE key = ?;`
+
+	row := i.db.QueryRowContext(ctx, selectQuery, key)
+
+	var rec domain.IdempotencyRecord
+	var responseCode sql.NullInt64
+	var responseBody []byte
+
+	err = row.Scan(&rec.Key, &rec.Status, &responseCode, &responseBody, &rec.CreatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil, nil
+		}
+		return false, nil, fmt.Errorf("failed to query existing idempotency record in sqlite: %w", err)
+	}
+
+	if responseCode.Valid {
+		rec.ResponseCode = int(responseCode.Int64)
+	}
+	rec.ResponseBody = responseBody
+
+	return false, &rec, nil
+}
+
+func (i IdempotencyCache) Save(ctx context.Context, key string, statusCode int, body []byte, ttl time.Duration) error {
+	now := time.Now().UTC()
+	expiresAt := now.Add(ttl)
+
+	query := `
+		UPDATE idempotency_records 
+		SET status = ?, response_code = ?, response_body = ?, expires_at = ?
+		WHERE key = ?;`
+
+	res, err := i.db.ExecContext(ctx, query,
+		domain.IdempotencyStatusCompleted,
+		statusCode,
+		body,
+		expiresAt,
+		key,
+	)
+	if err != nil {
+		return fmt.Errorf("sqlite update failed: %w", err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to verify rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("idempotency key %s not found to update", key)
+	}
+
+	return nil
+}

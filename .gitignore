@@ -1,0 +1,40 @@
+# Binaries and templates
+# Examples of binary/executable layouts
+bin/
+dist/
+build/
+out/
+
+# Go specific files
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+
+# IDEs/Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*~
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment variables / Secrets
+.env
+.env.*
+!.env.example

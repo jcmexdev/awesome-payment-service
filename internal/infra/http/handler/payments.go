@@ -9,7 +9,18 @@ import (
 	"github.com/jcmexdev/payment-service/internal/infra/http/response"
 )
 
-func CreatePaymentHandler(w http.ResponseWriter, r *http.Request) {
+type PaymentsController interface {
+	CreatePayment(w http.ResponseWriter, r *http.Request)
+}
+
+type PaymentsHandler struct {
+}
+
+func NewPaymentsHandler() *PaymentsHandler {
+	return &PaymentsHandler{}
+}
+
+func (h PaymentsHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	var req dtos.PaymentRequestDTO
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
