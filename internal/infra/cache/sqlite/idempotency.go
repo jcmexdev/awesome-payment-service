@@ -112,28 +112,24 @@ func (i IdempotencyCache) Save(ctx context.Context, key string, statusCode int, 
 	expiresAt := now.Add(ttl)
 
 	query := `
-		UPDATE idempotency_records 
-		SET status = ?, response_code = ?, response_body = ?, expires_at = ?
-		WHERE key = ?;`
+		INSERT INTO idempotency_records (key, status, response_code, response_body, expires_at, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT(key) DO UPDATE SET
+			status = excluded.status,
+			response_code = excluded.response_code,
+			response_body = excluded.response_body,
+			expires_at = excluded.expires_at;`
 
-	res, err := i.db.ExecContext(ctx, query,
+	_, err := i.db.ExecContext(ctx, query,
+		key,
 		domain.IdempotencyStatusCompleted,
 		statusCode,
 		body,
 		expiresAt,
-		key,
+		now,
 	)
 	if err != nil {
-		return fmt.Errorf("sqlite update failed: %w", err)
-	}
-
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to verify rows affected: %w", err)
-	}
-
-	if rowsAffected == 0 {
-		return fmt.Errorf("idempotency key %s not found to update", key)
+		return fmt.Errorf("sqlite upsert failed: %w", err)
 	}
 
 	return nil

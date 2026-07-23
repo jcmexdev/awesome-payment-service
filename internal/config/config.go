@@ -11,6 +11,7 @@ type Config struct {
 	RedisTimeout        time.Duration
 	LogLevel            string
 	IdempotencyFilePath string
+	IdempotencyTTL      time.Duration
 }
 
 func Load() *Config {
@@ -20,6 +21,7 @@ func Load() *Config {
 		RedisTimeout:        parseDuration(getEnv("REDIS_TIMEOUT", "50ms"), 50*time.Millisecond),
 		LogLevel:            getEnv("LOG_LEVEL", "info"),
 		IdempotencyFilePath: getEnv("IDEMPOTENCY_FILE_PATH", "idempotency.db"),
+		IdempotencyTTL:      parseDuration(getEnv("IDEMPOTENCY_TTL", "1h"), 1*time.Hour),
 	}
 }
 

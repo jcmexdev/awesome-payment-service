@@ -34,6 +34,7 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		slog.Duration("REDIS_TIMEOUT", cfg.RedisTimeout),
 		slog.String("LOG_LEVEL", cfg.LogLevel),
 		slog.String("IDEMPOTENCY_FILE_PATH", cfg.IdempotencyFilePath),
+		slog.Duration("IDEMPOTENCY_TTL", cfg.IdempotencyTTL),
 	)
 
 	redisClient, err := initRedis(ctx, cfg.RedisAddr)
@@ -53,7 +54,7 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 	idempotencyPersistence := cache.NewPersistenceCache(redisCacheRepo, sqliteCacheRepo, 50*time.Millisecond)
-	idempMiddleware := middleware.NewIdempotencyMiddleware(idempotencyPersistence, 50*time.Millisecond)
+	idempMiddleware := middleware.NewIdempotencyMiddleware(idempotencyPersistence, cfg.IdempotencyTTL)
 
 	r := router.NewRouter(
 		router.WithHealthController(handler.NewHealthHandler()),

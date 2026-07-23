@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: build/payments-api/Dockerfile
     container_name: payment_service
+    volumes:
+       - ./data:/app/data
     ports:
       - "8080:8080"
     env_file:
