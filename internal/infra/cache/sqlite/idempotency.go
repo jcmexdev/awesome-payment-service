@@ -9,6 +9,8 @@ import (
 
 	"github.com/jcmexdev/payment-service/internal/domain"
 	_ "modernc.org/sqlite"
+	"github.com/uptrace/opentelemetry-go-extra/otelsql"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
 type IdempotencyCache struct {
@@ -21,7 +23,10 @@ func NewConnection(ctx context.Context, path string) (*sql.DB, error) {
 	}
 
 	dsn := fmt.Sprintf("%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", path)
-	db, err := sql.Open("sqlite", dsn)
+	db, err := otelsql.Open("sqlite", dsn,
+		otelsql.WithAttributes(semconv.DBSystemSqlite),
+		otelsql.WithDBName(path),
+	)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite: %w", err)

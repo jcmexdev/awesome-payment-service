@@ -6,6 +6,9 @@ import (
 	"time"
 
 	"github.com/jcmexdev/payment-service/internal/domain/ports"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const HeaderIdempotencyKey = "Idempotency-Key"
@@ -35,7 +38,15 @@ func (m *IdempotencyMiddleware) Handler(next http.Handler) http.Handler {
 			return
 		}
 
-		acquired, record, err := m.repo.Lock(r.Context(), key, m.ttl)
+		tr := otel.Tracer("idempotency-middleware")
+
+		// 1. Wrap the Lock and read check phase in a child span
+		ctx, checkSpan := tr.Start(r.Context(), "idempotency.check", trace.WithAttributes(
+			attribute.String("idempotency.key", key),
+		))
+		acquired, record, err := m.repo.Lock(ctx, key, m.ttl)
+		checkSpan.End()
+
 		if err != nil {
 			slog.Error("idempotency_middleware_lock_error", "key", key, "error", err)
 			next.ServeHTTP(w, r)
@@ -62,9 +73,15 @@ func (m *IdempotencyMiddleware) Handler(next http.Handler) http.Handler {
 		next.ServeHTTP(wrapper, r)
 
 		if wrapper.statusCode < http.StatusInternalServerError {
-			if err := m.repo.Save(r.Context(), key, wrapper.statusCode, wrapper.body.Bytes(), m.ttl); err != nil {
+			// 2. Wrap the Save phase in a child span
+			ctx, saveSpan := tr.Start(r.Context(), "idempotency.save", trace.WithAttributes(
+				attribute.String("idempotency.key", key),
+				attribute.Int("http.status_code", wrapper.statusCode),
+			))
+			if err := m.repo.Save(ctx, key, wrapper.statusCode, wrapper.body.Bytes(), m.ttl); err != nil {
 				slog.Error("idempotency_middleware_save_error", "key", key, "error", err)
 			}
+			saveSpan.End()
 		}
 	})
 }

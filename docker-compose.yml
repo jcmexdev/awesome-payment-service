@@ -22,6 +22,10 @@ services:
       - ./data:/app/data
     env_file:
       - .env
+    environment:
+      - REDIS_ADDR=redis:6379
+      - OTEL_COLLECTOR_ADDR=otel-collector:4317
+      - OTEL_SERVICE_NAME=payment-service
     depends_on:
       redis:
         condition: service_healthy

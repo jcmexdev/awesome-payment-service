@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jcmexdev/payment-service/internal/infra/http/handler"
 	appmiddleware "github.com/jcmexdev/payment-service/internal/infra/http/middleware"
+	"github.com/riandyrn/otelchi"
 )
 
 type router struct {
@@ -36,6 +37,7 @@ func WithPaymentsController(checkHandler handler.PaymentsController) Options {
 func NewRouter(options ...Options) *chi.Mux {
 	r := &router{}
 	mux := chi.NewRouter()
+	mux.Use(otelchi.Middleware("payment-service", otelchi.WithChiRoutes(mux)))
 	mux.Use(middleware.Logger)
 	mux.Use(middleware.Recoverer)
 	for _, option := range options {
