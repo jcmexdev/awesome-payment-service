@@ -1,20 +1,33 @@
 services:
+  api-gateway:
+    image: krakend:2.9
+    container_name: api_gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./krakend.json:/etc/krakend/krakend.json
+    command: ["run", "-c", "/etc/krakend/krakend.json"]
+    depends_on:
+      - payment-service
+      - otel-collector
+    networks:
+      - payment_network
+
   payment-service:
     build:
       context: .
       dockerfile: build/payments-api/Dockerfile
     container_name: payment_service
     volumes:
-       - ./data:/app/data
-    ports:
-      - "8080:8080"
+      - ./data:/app/data
     env_file:
       - .env
-    environment:
-      - REDIS_ADDR=redis:6379
     depends_on:
       redis:
         condition: service_healthy
+    networks:
+      - payment_network
+
   redis:
     image: redis:7-alpine
     container_name: payment_redis
@@ -28,6 +41,49 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - payment_network
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel_collector
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - "4317:4317" # Recibe trazas de KrakenD y Go
+    depends_on:
+      - tempo
+    networks:
+      - payment_network
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo.yaml
+    ports:
+      - "3200:3200"
+    networks:
+      - payment_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./config/grafana-datasource.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+    depends_on:
+      - tempo
+    networks:
+      - payment_network
 
 volumes:
   redis_data:
+
+networks:
+  payment_network:
+    driver: bridge

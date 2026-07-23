@@ -1,0 +1,69 @@
+{
+    "$schema": "https://www.krakend.io/schema/v2.9/krakend.json",
+    "version": 3,
+    "name": "Payment Engine API Gateway",
+    "port": 8080,
+    "cache_ttl": "3600s",
+    "timeout": "3s",
+    "extra_config": {
+        "telemetry/opentelemetry": {
+            "service_name": "api-gateway",
+            "metric_reporting_period": 1,
+            "exporters": {
+                "otlp": [
+                    {
+                        "name": "tempo_collector",
+                        "host": "otel-collector",
+                        "port": 4317,
+                        "use_http": false
+                    }
+                ]
+            }
+        }
+    },
+    "endpoints": [
+        {
+            "endpoint": "/v1/payments",
+            "method": "POST",
+            "output_encoding": "no-op",
+            "input_headers": [
+                "Content-Type",
+                "Idempotency-Key",
+                "Authorization",
+                "X-Request-ID",
+                "traceparent"
+            ],
+            "backend": [
+                {
+                    "url_pattern": "/v1/payments",
+                    "encoding": "no-op",
+                    "sd": "static",
+                    "method": "POST",
+                    "extra_config": {
+                        "backend/http": {
+                            "return_error_details": "backend"
+                        }
+                    },
+                    "host": [
+                        "http://payment-service:8080"
+                    ]
+                }
+            ]
+        },
+        {
+            "endpoint": "/health",
+            "method": "GET",
+            "output_encoding": "no-op",
+            "backend": [
+                {
+                    "url_pattern": "/health",
+                    "encoding": "no-op",
+                    "sd": "static",
+                    "host": [
+                        "http://payment-service:8080"
+                    ]
+                }
+            ]
+        }
+    ]
+}
