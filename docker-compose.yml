@@ -6,8 +6,9 @@ services:
     container_name: payment_service
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
-      - PORT=8080
       - REDIS_ADDR=redis:6379
     depends_on:
       redis:

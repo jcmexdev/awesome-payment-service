@@ -1,1 +1,1 @@
-package payments_api
+package main

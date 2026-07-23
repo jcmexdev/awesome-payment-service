@@ -4,14 +4,22 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jcmexdev/payment-service/internal/infra/http/handler"
+	appmiddleware "github.com/jcmexdev/payment-service/internal/infra/http/middleware"
 )
 
 type router struct {
-	healthController   handler.HealthCheckController
-	paymentsController handler.PaymentsController
+	healthController      handler.HealthCheckController
+	paymentsController    handler.PaymentsController
+	idempotencyMiddleware *appmiddleware.IdempotencyMiddleware
 }
 
 type Options func(r *router)
+
+func WithIdempotencyMiddleware(idempotencyMiddleware *appmiddleware.IdempotencyMiddleware) Options {
+	return func(r *router) {
+		r.idempotencyMiddleware = idempotencyMiddleware
+	}
+}
 
 func WithHealthController(checkHandler handler.HealthCheckController) Options {
 	return func(r *router) {
@@ -33,6 +41,7 @@ func NewRouter(options ...Options) *chi.Mux {
 	for _, option := range options {
 		option(r)
 	}
+
 	r.mapHealthRoutes(mux)
 	r.mapPaymentsRouter(mux)
 
@@ -50,5 +59,13 @@ func (r router) mapPaymentsRouter(mux *chi.Mux) {
 	if r.paymentsController == nil {
 		panic("health controller is required")
 	}
-	mux.Post("/v1/payments", r.paymentsController.CreatePayment)
+	mux.Route("/v1", func(v1 chi.Router) {
+		if r.idempotencyMiddleware == nil {
+			panic("idempotency middleware is required")
+		}
+
+		v1.Use(r.idempotencyMiddleware.Handler)
+		v1.Post("/payments", r.paymentsController.CreatePayment)
+	})
+
 }

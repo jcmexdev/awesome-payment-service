@@ -1,13 +1,30 @@
 ### Ping
-GET http://localhost:8080/ping
+GET http://localhost:8080/health
 Content-Type: application/json
 
-### Payment
+### Create Payment (First Time)
+# This request registers the key. If you execute it a second time within 50ms,
+# it will return a 409 Conflict. After that, it returns the cached response with X-Cache: HIT-IDEMPOTENCY.
 POST http://localhost:8080/v1/payments
 Content-Type: application/json
+Idempotency-Key: payment_key_123456
 
 {
+    "account_id": "acc_887123",
+    "amount": 1000,
+    "currency": "USD"
+}
 
+
+### Create Payment (Different Key)
+POST http://localhost:8080/v1/payments
+Content-Type: application/json
+Idempotency-Key: payment_key_789012
+
+{
+    "account_id": "acc_887123",
+    "amount": 2500,
+    "currency": "USD"
 }
 
 
@@ -16,5 +33,5 @@ POST http://localhost:8080/v1/payments
 Content-Type: application/json
 
 {
-    "json": ""malformed",
+    "json": "malformed"
 }

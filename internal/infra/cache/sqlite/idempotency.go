@@ -8,24 +8,56 @@ import (
 	"time"
 
 	"github.com/jcmexdev/payment-service/internal/domain"
+	_ "modernc.org/sqlite"
 )
 
 type IdempotencyCache struct {
 	db *sql.DB
 }
 
-func NewIdempotencyCache(db *sql.DB) (*IdempotencyCache, error) {
+func NewConnection(ctx context.Context, path string) (*sql.DB, error) {
+	if path == "" {
+		return nil, errors.New("path required")
+	}
+
+	dsn := fmt.Sprintf("%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", path)
+	db, err := sql.Open("sqlite", dsn)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to open sqlite: %w", err)
+	}
+
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+
+	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(pingCtx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("sqlite ping failed: %w", err)
+	}
+
+	return db, nil
+}
+
+func NewIdempotencyCache(ctx context.Context, db *sql.DB) (*IdempotencyCache, error) {
 	query := `
 	CREATE TABLE IF NOT EXISTS idempotency_records (
-		key TEXT PRIMARY KEY,
-		status TEXT NOT NULL,
-		response_code INTEGER,
-		response_body BLOB,
-		expires_at DATETIME NOT NULL,
-		created_at DATETIME NOT NULL
-	);`
+       key TEXT PRIMARY KEY,
+       status TEXT NOT NULL,
+       response_code INTEGER,
+       response_body BLOB,
+       expires_at DATETIME NOT NULL,
+       created_at DATETIME NOT NULL
+    );
+	CREATE INDEX IF NOT EXISTS idx_expires_at ON idempotency_records(expires_at);
+	`
 
-	if _, err := db.Exec(query); err != nil {
+	execCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	if _, err := db.ExecContext(execCtx, query); err != nil {
 		return nil, fmt.Errorf("failed to create idempotency table in sqlite: %w", err)
 	}
 
