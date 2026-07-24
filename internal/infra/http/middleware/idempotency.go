@@ -8,6 +8,7 @@ import (
 	"github.com/jcmexdev/payment-service/internal/domain/ports"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -45,6 +46,12 @@ func (m *IdempotencyMiddleware) Handler(next http.Handler) http.Handler {
 			attribute.String("idempotency.key", key),
 		))
 		acquired, record, err := m.repo.Lock(ctx, key, m.ttl)
+		if err != nil {
+			checkSpan.RecordError(err)
+			checkSpan.SetStatus(codes.Error, err.Error())
+		} else {
+			checkSpan.SetStatus(codes.Ok, "idempotency check completed")
+		}
 		checkSpan.End()
 
 		if err != nil {
@@ -79,7 +86,11 @@ func (m *IdempotencyMiddleware) Handler(next http.Handler) http.Handler {
 				attribute.Int("http.status_code", wrapper.statusCode),
 			))
 			if err := m.repo.Save(ctx, key, wrapper.statusCode, wrapper.body.Bytes(), m.ttl); err != nil {
+				saveSpan.RecordError(err)
+				saveSpan.SetStatus(codes.Error, err.Error())
 				slog.Error("idempotency_middleware_save_error", "key", key, "error", err)
+			} else {
+				saveSpan.SetStatus(codes.Ok, "idempotency response saved")
 			}
 			saveSpan.End()
 		}

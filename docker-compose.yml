@@ -26,8 +26,11 @@ services:
       - REDIS_ADDR=redis:6379
       - OTEL_COLLECTOR_ADDR=otel-collector:4317
       - OTEL_SERVICE_NAME=payment-service
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     networks:
       - payment_network
@@ -42,6 +45,25 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - payment_network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: payment_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -87,6 +109,7 @@ services:
 
 volumes:
   redis_data:
+  postgres_data:
 
 networks:
   payment_network:

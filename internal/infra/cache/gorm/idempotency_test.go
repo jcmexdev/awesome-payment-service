@@ -1,29 +1,33 @@
-package sqlite
+package gorm
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/jcmexdev/payment-service/internal/domain"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 func TestIdempotencyCache_Save(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "sqlite-test-*")
+	// Use in-memory SQLite for testing to avoid database server dependencies
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
+		t.Fatalf("failed to open in-memory sqlite: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
 
-	dbPath := filepath.Join(tempDir, "test.db")
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("failed to get sql.DB: %v", err)
+	}
+	defer sqlDB.Close()
+
+	if err := db.AutoMigrate(&domain.IdempotencyRecord{}); err != nil {
+		t.Fatalf("failed to migrate schema: %v", err)
+	}
+
 	ctx := context.Background()
-
-	db, err := NewConnection(ctx, dbPath)
-	if err != nil {
-		t.Fatalf("failed to open connection: %v", err)
-	}
-	defer db.Close()
-
 	cache, err := NewIdempotencyCache(ctx, db)
 	if err != nil {
 		t.Fatalf("failed to create idempotency cache: %v", err)
