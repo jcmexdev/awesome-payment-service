@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jcmexdev/payment-service/internal/infra/http/handler"
 	appmiddleware "github.com/jcmexdev/payment-service/internal/infra/http/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/riandyrn/otelchi"
 )
 
@@ -44,6 +45,9 @@ func NewRouter(options ...Options) *chi.Mux {
 		option(r)
 	}
 
+	// Register Prometheus metrics handler
+	mux.Handle("/metrics", promhttp.Handler())
+
 	r.mapHealthRoutes(mux)
 	r.mapPaymentsRouter(mux)
 
@@ -67,6 +71,7 @@ func (r router) mapPaymentsRouter(mux *chi.Mux) {
 		}
 
 		v1.Use(r.idempotencyMiddleware.Handler)
+		v1.Post("/accounts", r.paymentsController.CreateAccount)
 		v1.Post("/payments", r.paymentsController.CreatePayment)
 	})
 

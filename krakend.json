@@ -23,6 +23,33 @@
     },
     "endpoints": [
         {
+            "endpoint": "/v1/accounts",
+            "method": "POST",
+            "output_encoding": "no-op",
+            "input_headers": [
+                "Content-Type",
+                "Authorization",
+                "X-Request-ID",
+                "traceparent"
+            ],
+            "backend": [
+                {
+                    "url_pattern": "/v1/accounts",
+                    "encoding": "no-op",
+                    "sd": "static",
+                    "method": "POST",
+                    "extra_config": {
+                        "backend/http": {
+                            "return_error_details": "backend"
+                        }
+                    },
+                    "host": [
+                        "http://payment-service:8080"
+                    ]
+                }
+            ]
+        },
+        {
             "endpoint": "/v1/payments",
             "method": "POST",
             "output_encoding": "no-op",
@@ -31,7 +58,9 @@
                 "Idempotency-Key",
                 "Authorization",
                 "X-Request-ID",
-                "traceparent"
+                "traceparent",
+                "X-Simulate-Delay",
+                "X-Simulate-Error"
             ],
             "backend": [
                 {

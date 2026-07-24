@@ -18,6 +18,8 @@ import (
 	"github.com/jcmexdev/payment-service/internal/infra/http/handler"
 	"github.com/jcmexdev/payment-service/internal/infra/http/middleware"
 	"github.com/jcmexdev/payment-service/internal/infra/telemetry"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/redis/go-redis/v9"
 	gormio "gorm.io/gorm"
 )
@@ -70,6 +72,12 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 			_ = shutdownTelemetry(ctx)
 		}
 		return nil, err
+	}
+
+	// Register DB stats collector for Prometheus
+	if sqlDB, err := gormDB.DB(); err == nil {
+		prometheus.MustRegister(collectors.NewDBStatsCollector(sqlDB, "payment_db"))
+		slog.Info("Prometheus DBStatsCollector registered successfully")
 	}
 
 	redisCacheRepo := rediscache.NewIdempotencyCache(redisClient)

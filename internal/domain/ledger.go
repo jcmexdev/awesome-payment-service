@@ -55,3 +55,10 @@ func (le *LedgerEntry) Validate() error {
 	}
 	return nil
 }
+
+type ContextKey string
+
+const (
+	ContextKeySimulateDelay ContextKey = "simulate-delay"
+	ContextKeySimulateError ContextKey = "simulate-error"
+)
