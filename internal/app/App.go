@@ -33,7 +33,8 @@ type App struct {
 }
 
 func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	jsonHandler := slog.NewJSONHandler(os.Stdout, nil)
+	logger := slog.New(telemetry.NewContextHandler(jsonHandler))
 	slog.SetDefault(logger)
 
 	slog.Info("Configuration loaded successfully",

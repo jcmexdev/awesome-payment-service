@@ -39,6 +39,7 @@ func NewRouter(options ...Options) *chi.Mux {
 	r := &router{}
 	mux := chi.NewRouter()
 	mux.Use(otelchi.Middleware("payment-service", otelchi.WithChiRoutes(mux)))
+	mux.Use(appmiddleware.TelemetryMiddleware) // Global tracing ID middleware
 	mux.Use(middleware.Logger)
 	mux.Use(middleware.Recoverer)
 	for _, option := range options {

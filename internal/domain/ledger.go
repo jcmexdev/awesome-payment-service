@@ -61,4 +61,6 @@ type ContextKey string
 const (
 	ContextKeySimulateDelay ContextKey = "simulate-delay"
 	ContextKeySimulateError ContextKey = "simulate-error"
+	ContextKeyRequestID     ContextKey = "request-id"
+	ContextKeyTraceID       ContextKey = "trace-id"
 )
