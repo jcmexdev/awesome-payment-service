@@ -40,7 +40,7 @@ func main() {
 		return
 	case <-rootContext.Done():
 		slog.Info("Shutdown signal received, starting graceful shutdown...")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
 
 		if err := application.Shutdown(shutdownCtx); err != nil {

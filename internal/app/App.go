@@ -127,6 +127,7 @@ func initRedis(ctx context.Context, addr string) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{Addr: addr})
 
 	client.AddHook(telemetry.NewOpenTelemetryRedisHook())
+	client.AddHook(telemetry.NewPrometheusRedisHook())
 
 	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()

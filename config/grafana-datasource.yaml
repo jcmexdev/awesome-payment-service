@@ -21,6 +21,12 @@ datasources:
     basicAuth: false
     version: 1
     editable: true
+    jsonData:
+      derivedFields:
+        - datasourceUid: Tempo
+          matcherRegex: '"trace_id":"([a-f0-9]+)"'
+          name: TraceID
+          url: '$${__value.raw}'
 
   - name: Prometheus
     type: prometheus
