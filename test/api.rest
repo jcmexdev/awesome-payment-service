@@ -33,5 +33,5 @@ POST http://localhost:8080/v1/payments
 Content-Type: application/json
 
 {
-    "json": "malformed"
+    "json": ""malformed"
 }

@@ -18,5 +18,5 @@ func NewHealthHandler() *HealthCheckHandler {
 }
 
 func (h HealthCheckHandler) Health(w http.ResponseWriter, r *http.Request) {
-	response.SendSuccess(w, http.StatusOK, response.CodeSystemHealthy, struct{}{})
+	response.SendSuccess(w, r, http.StatusOK, response.CodeSystemHealthy, struct{}{})
 }

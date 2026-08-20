@@ -12,6 +12,9 @@ type Config struct {
 	LogLevel            string
 	IdempotencyFilePath string
 	IdempotencyTTL      time.Duration
+	OtelCollectorAddr   string
+	OtelServiceName     string
+	DatabaseURL         string
 }
 
 func Load() *Config {
@@ -22,6 +25,9 @@ func Load() *Config {
 		LogLevel:            getEnv("LOG_LEVEL", "info"),
 		IdempotencyFilePath: getEnv("IDEMPOTENCY_FILE_PATH", "idempotency.db"),
 		IdempotencyTTL:      parseDuration(getEnv("IDEMPOTENCY_TTL", "1h"), 1*time.Hour),
+		OtelCollectorAddr:   getEnv("OTEL_COLLECTOR_ADDR", ""),
+		OtelServiceName:     getEnv("OTEL_SERVICE_NAME", "payment-service"),
+		DatabaseURL:         getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"),
 	}
 }
 

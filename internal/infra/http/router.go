@@ -5,6 +5,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jcmexdev/payment-service/internal/infra/http/handler"
 	appmiddleware "github.com/jcmexdev/payment-service/internal/infra/http/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/riandyrn/otelchi"
 )
 
 type router struct {
@@ -36,11 +38,16 @@ func WithPaymentsController(checkHandler handler.PaymentsController) Options {
 func NewRouter(options ...Options) *chi.Mux {
 	r := &router{}
 	mux := chi.NewRouter()
+	mux.Use(otelchi.Middleware("payment-service", otelchi.WithChiRoutes(mux)))
+	mux.Use(appmiddleware.TelemetryMiddleware) // Global tracing ID middleware
 	mux.Use(middleware.Logger)
 	mux.Use(middleware.Recoverer)
 	for _, option := range options {
 		option(r)
 	}
+
+	// Register Prometheus metrics handler
+	mux.Handle("/metrics", promhttp.Handler())
 
 	r.mapHealthRoutes(mux)
 	r.mapPaymentsRouter(mux)
@@ -65,6 +72,7 @@ func (r router) mapPaymentsRouter(mux *chi.Mux) {
 		}
 
 		v1.Use(r.idempotencyMiddleware.Handler)
+		v1.Post("/accounts", r.paymentsController.CreateAccount)
 		v1.Post("/payments", r.paymentsController.CreatePayment)
 	})
 

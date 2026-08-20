@@ -59,3 +59,6 @@ Este archivo detalla las tareas de refactorización y corrección priorizadas de
   - [ ] Generar un hash (ej: SHA-256) del cuerpo de la petición en el middleware.
   - [ ] Guardar el hash junto con el registro en la base de datos.
   - [ ] Al recibir una llave duplicada, verificar que el hash del cuerpo actual coincida con el guardado; si no, devolver un error `400 Bad Request`.
+
+
+ahora agrega alguna funcionalidad para que mi db o mis servicios fallen intencionalmente con algun atributo, quiero poder entender como funcionan los traces y como la observabilidad me ayuda a encontrar problemas pero para eso necesito generar cargas masivas con k8 y hacer que mi servici falle aveces y de ahi ir diagnosticando que paso ayudame con eso 

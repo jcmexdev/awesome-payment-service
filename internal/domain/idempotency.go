@@ -9,12 +9,13 @@ const (
 )
 
 type IdempotencyRecord struct {
-	Key          string
-	Status       string
-	ResponseCode int
-	ResponseBody []byte
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	Key          string    `gorm:"primaryKey;type:varchar(255)"`
+	Status       string    `gorm:"type:varchar(50);not null"`
+	ResponseCode int       `gorm:"not null"`
+	ResponseBody []byte    `gorm:"type:bytea"`
+	CreatedAt    time.Time `gorm:"not null"`
+	UpdatedAt    time.Time `gorm:"not null"`
+	ExpiresAt    time.Time `gorm:"index;not null"`
 }
 
 func (r *IdempotencyRecord) IsProcessing() bool {

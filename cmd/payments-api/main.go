@@ -29,13 +29,10 @@ func main() {
 	go func() {
 		slog.Info("Http Server starting", "addr", application.Server.Addr)
 		err := application.Server.ListenAndServe()
-		if err != nil && errors.Is(err, http.ErrServerClosed) {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErrors <- err
 		}
 	}()
-	if err := application.Server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		slog.Error("Failed to start HTTP server", "error", err)
-	}
 
 	select {
 	case err := <-serverErrors:
@@ -46,7 +43,7 @@ func main() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 
-		if err := application.Server.Shutdown(shutdownCtx); err != nil {
+		if err := application.Shutdown(shutdownCtx); err != nil {
 			slog.Error("Graceful shutdown failed, forcing exit", "error", err)
 			_ = application.Server.Close()
 		} else {

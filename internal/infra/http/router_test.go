@@ -33,6 +33,11 @@ func (m *mockPaymentsController) CreatePayment(w http.ResponseWriter, r *http.Re
 	_, _ = w.Write([]byte(`{"status":"created"}`))
 }
 
+func (m *mockPaymentsController) CreateAccount(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write([]byte(`{"status":"account_created"}`))
+}
+
 type mockHealthController struct{}
 
 func (m *mockHealthController) Health(w http.ResponseWriter, r *http.Request) {}
