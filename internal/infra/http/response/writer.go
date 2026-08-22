@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jcmexdev/payment-service/internal/domain"
+	"github.com/jcmexdev/payment-service/internal/domain/constants"
 	appErrors "github.com/jcmexdev/payment-service/internal/domain/errors"
 )
 
@@ -50,8 +50,8 @@ func SendError(w http.ResponseWriter, r *http.Request, statusCode int, errorCode
 	var reqID, traceID string
 	if r != nil {
 		ctx := r.Context()
-		reqID, _ = ctx.Value(domain.ContextKeyRequestID).(string)
-		traceID, _ = ctx.Value(domain.ContextKeyTraceID).(string)
+		reqID, _ = ctx.Value(constants.ContextKeyRequestID).(string)
+		traceID, _ = ctx.Value(constants.ContextKeyTraceID).(string)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -76,8 +76,8 @@ func SendSuccess[T any](w http.ResponseWriter, r *http.Request, statusCode int, 
 	var reqID, traceID string
 	if r != nil {
 		ctx := r.Context()
-		reqID, _ = ctx.Value(domain.ContextKeyRequestID).(string)
-		traceID, _ = ctx.Value(domain.ContextKeyTraceID).(string)
+		reqID, _ = ctx.Value(constants.ContextKeyRequestID).(string)
+		traceID, _ = ctx.Value(constants.ContextKeyTraceID).(string)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -93,7 +93,7 @@ func SendSuccess[T any](w http.ResponseWriter, r *http.Request, statusCode int, 
 			TraceID:   traceID,
 			Version:   "v1",
 		},
-		Data:    data,
+		Data: data,
 	}
 
 	json.NewEncoder(w).Encode(resp)

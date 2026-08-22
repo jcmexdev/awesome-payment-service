@@ -4,7 +4,7 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/jcmexdev/payment-service/internal/domain"
+	"github.com/jcmexdev/payment-service/internal/domain/constants"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -25,7 +25,7 @@ func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
 	r.AddAttrs(slog.String("service_name", "payment-service"))
 
 	// Extraer request_id del contexto
-	if reqID, ok := ctx.Value(domain.ContextKeyRequestID).(string); ok && reqID != "" {
+	if reqID, ok := ctx.Value(constants.ContextKeyRequestID).(string); ok && reqID != "" {
 		r.AddAttrs(slog.String("request_id", reqID))
 	}
 
@@ -34,7 +34,7 @@ func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
 	if spanCtx.IsValid() {
 		r.AddAttrs(slog.String("trace_id", spanCtx.TraceID().String()))
 	} else {
-		if traceID, ok := ctx.Value(domain.ContextKeyTraceID).(string); ok && traceID != "" {
+		if traceID, ok := ctx.Value(constants.ContextKeyTraceID).(string); ok && traceID != "" {
 			r.AddAttrs(slog.String("trace_id", traceID))
 		}
 	}

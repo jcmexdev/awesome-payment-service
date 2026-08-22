@@ -9,7 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jcmexdev/payment-service/internal/domain"
+	"github.com/jcmexdev/payment-service/internal/domain/constants"
 	"github.com/jcmexdev/payment-service/internal/domain/ports"
+	"github.com/jcmexdev/payment-service/internal/infra/http/consts"
 	"github.com/jcmexdev/payment-service/internal/infra/http/dtos"
 	"github.com/jcmexdev/payment-service/internal/infra/http/response"
 )
@@ -40,7 +42,7 @@ func (h PaymentsHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.UserID == "" {
-		response.SendError(w, r, http.StatusBadRequest, "MISSING_USER_ID", []response.ErrorDetail{
+		response.SendError(w, r, http.StatusBadRequest, response.CodeMissingUserId, []response.ErrorDetail{
 			{Field: "user_id", Reason: "user_id is required"},
 		})
 		return
@@ -70,7 +72,7 @@ func (h PaymentsHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.InfoContext(ctx, "CreateAccount successful", "account_id", account.ID, "user_id", account.UserID)
-	response.SendSuccess(w, r, http.StatusCreated, "ACCOUNT_CREATED", account)
+	response.SendSuccess(w, r, http.StatusCreated, response.CodeAccountCreated, dtos.NewCreateAccountResponse(&account))
 }
 
 func (h PaymentsHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +96,7 @@ func (h PaymentsHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refID := r.Header.Get("Idempotency-Key")
+	refID := r.Header.Get(consts.HeaderRequestID)
 	if refID == "" {
 		refID = uuid.New().String()
 	}
@@ -103,11 +105,11 @@ func (h PaymentsHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if delayVal := r.Header.Get("X-Simulate-Delay"); delayVal != "" {
 		if d, err := time.ParseDuration(delayVal); err == nil {
-			ctx = context.WithValue(ctx, domain.ContextKeySimulateDelay, d)
+			ctx = context.WithValue(ctx, constants.ContextKeySimulateDelay, d)
 		}
 	}
 	if failVal := r.Header.Get("X-Simulate-Error"); failVal == "true" {
-		ctx = context.WithValue(ctx, domain.ContextKeySimulateError, true)
+		ctx = context.WithValue(ctx, constants.ContextKeySimulateError, true)
 	}
 
 	// Invocar el caso de uso que encapsula la lógica de negocio y su span principal

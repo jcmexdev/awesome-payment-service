@@ -33,7 +33,21 @@ type App struct {
 }
 
 func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
-	jsonHandler := slog.NewJSONHandler(os.Stdout, nil)
+	var level slog.Level
+	switch cfg.LogLevel {
+	case "debug", "DEBUG":
+		level = slog.LevelDebug
+	case "warn", "WARN":
+		level = slog.LevelWarn
+	case "error", "ERROR":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	})
 	logger := slog.New(telemetry.NewContextHandler(jsonHandler))
 	slog.SetDefault(logger)
 

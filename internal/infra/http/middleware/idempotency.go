@@ -1,28 +1,37 @@
 package middleware
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/jcmexdev/payment-service/internal/domain/ports"
+	"github.com/jcmexdev/payment-service/internal/infra/http/consts"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
-const HeaderIdempotencyKey = "Idempotency-Key"
-
 type IdempotencyMiddleware struct {
-	repo ports.IdempotencyRepository
-	ttl  time.Duration
+	repo   ports.IdempotencyRepository
+	ttl    time.Duration
+	prefix string
 }
 
 func NewIdempotencyMiddleware(repo ports.IdempotencyRepository, ttl time.Duration) *IdempotencyMiddleware {
 	return &IdempotencyMiddleware{
 		repo: repo,
 		ttl:  ttl,
+	}
+}
+
+func (m *IdempotencyMiddleware) WithPrefix(prefix string) *IdempotencyMiddleware {
+	return &IdempotencyMiddleware{
+		repo:   m.repo,
+		ttl:    m.ttl,
+		prefix: prefix,
 	}
 }
 
@@ -33,11 +42,12 @@ func (m *IdempotencyMiddleware) Handler(next http.Handler) http.Handler {
 			return
 		}
 
-		key := r.Header.Get(HeaderIdempotencyKey)
-		if key == "" {
+		rawKey := r.Header.Get(consts.HeaderIdempotencyKey)
+		if rawKey == "" {
 			next.ServeHTTP(w, r)
 			return
 		}
+		key := fmt.Sprintf("%s:%s:%s", "idemp", m.prefix, rawKey)
 
 		tr := otel.Tracer("idempotency-middleware")
 

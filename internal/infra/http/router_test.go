@@ -51,8 +51,8 @@ func TestRouterIdempotency(t *testing.T) {
 		WithIdempotencyMiddleware(middlewareInstance),
 	)
 
-	// Case 1: GET to /v1/payment (should NOT lock because method is GET)
-	req := httptest.NewRequest(http.MethodGet, "/v1/payment", nil)
+	// Case 1: GET to /v1/payments (should NOT lock because method is GET)
+	req := httptest.NewRequest(http.MethodGet, "/v1/payments", nil)
 	req.Header.Set("Idempotency-Key", "test-key-1")
 	rec := httptest.NewRecorder()
 	routerInstance.ServeHTTP(rec, req)
@@ -61,25 +61,25 @@ func TestRouterIdempotency(t *testing.T) {
 		t.Error("Expected GET request not to invoke lock in idempotency middleware")
 	}
 
-	// Case 2: POST to /v1/payment (singular - unregistered route)
+	// Case 2: POST to /v1/accounts (registered route - account prefix)
 	repo.locked = false
 	repo.saved = false
-	req = httptest.NewRequest(http.MethodPost, "/v1/payment", nil)
+	req = httptest.NewRequest(http.MethodPost, "/v1/accounts", nil)
 	req.Header.Set("Idempotency-Key", "test-key-2")
 	rec = httptest.NewRecorder()
 	routerInstance.ServeHTTP(rec, req)
 
 	if !repo.locked {
-		t.Error("Expected POST request to /v1/payment to invoke lock in idempotency middleware")
+		t.Error("Expected POST request to /v1/accounts to invoke lock in idempotency middleware")
 	}
 	if !repo.saved {
-		t.Error("Expected idempotency middleware to save the response for unregistered route POST /v1/payment")
+		t.Error("Expected idempotency middleware to save the response for POST /v1/accounts")
 	}
-	if rec.Code != http.StatusNotFound {
-		t.Errorf("Expected status code 404, got %d", rec.Code)
+	if rec.Code != http.StatusCreated {
+		t.Errorf("Expected status code 201 (Created), got %d", rec.Code)
 	}
 
-	// Case 3: POST to /v1/payments (plural - registered route)
+	// Case 3: POST to /v1/payments (registered route - payment prefix)
 	repo.locked = false
 	repo.saved = false
 	req = httptest.NewRequest(http.MethodPost, "/v1/payments", nil)
@@ -91,7 +91,7 @@ func TestRouterIdempotency(t *testing.T) {
 		t.Error("Expected POST request to /v1/payments to invoke lock in idempotency middleware")
 	}
 	if !repo.saved {
-		t.Error("Expected idempotency middleware to save the response for registered route POST /v1/payments")
+		t.Error("Expected idempotency middleware to save the response for POST /v1/payments")
 	}
 	if rec.Code != http.StatusCreated {
 		t.Errorf("Expected status code 201, got %d", rec.Code)

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jcmexdev/payment-service/internal/domain"
+	"github.com/jcmexdev/payment-service/internal/domain/constants"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -20,8 +21,21 @@ func NewIdempotencyCache(client *redis.Client) *IdempotencyCache {
 }
 
 func (i IdempotencyCache) Lock(ctx context.Context, key string, ttl time.Duration) (bool, *domain.IdempotencyRecord, error) {
-	redisKey := fmt.Sprintf("idempotency:%s", key)
-	acquired, err := i.client.SetNX(ctx, redisKey, domain.IdempotencyStatusProcessing, ttl).Result()
+	reqID, _ := ctx.Value(constants.ContextKeyRequestID).(string)
+	now := time.Now().UTC()
+	lockRecord := domain.IdempotencyRecord{
+		Key:       key,
+		Status:    domain.IdempotencyStatusProcessing,
+		RequestID: reqID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	lockVal, err := json.Marshal(lockRecord)
+	if err != nil {
+		return false, nil, fmt.Errorf("failed to marshal lock record: %w", err)
+	}
+
+	acquired, err := i.client.SetNX(ctx, key, lockVal, ttl).Result()
 
 	if err != nil {
 		return false, nil, fmt.Errorf("redis setnx execution failed: %w", err)
@@ -31,7 +45,7 @@ func (i IdempotencyCache) Lock(ctx context.Context, key string, ttl time.Duratio
 		return true, nil, nil
 	}
 
-	val, err := i.client.Get(ctx, redisKey).Result()
+	val, err := i.client.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return false, nil, nil
@@ -58,11 +72,14 @@ func (i IdempotencyCache) Save(ctx context.Context, key string, statusCode int, 
 	redisKey := fmt.Sprintf("idempotency:%s", key)
 	now := time.Now().UTC()
 
+	reqID, _ := ctx.Value(constants.ContextKeyRequestID).(string)
+
 	record := domain.IdempotencyRecord{
 		Key:          key,
 		Status:       domain.IdempotencyStatusCompleted,
 		ResponseCode: statusCode,
 		ResponseBody: body,
+		RequestID:    reqID,
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}

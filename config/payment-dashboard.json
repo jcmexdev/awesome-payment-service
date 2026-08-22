@@ -91,7 +91,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 16,
+        "w": 12,
         "x": 0,
         "y": 1
       },
@@ -157,8 +157,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 8,
-        "x": 16,
+        "w": 6,
+        "x": 12,
         "y": 1
       },
       "id": 3,
@@ -217,8 +217,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 8,
-        "x": 16,
+        "w": 6,
+        "x": 12,
         "y": 5
       },
       "id": 4,
@@ -250,6 +250,63 @@
       ],
       "title": "Transacciones de Pago Procesadas (1h)",
       "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "Loki"
+      },
+      "description": "Top 10 de mensajes de log más frecuentes en los últimos 5 minutos. Ayuda a detectar de inmediato qué evento o mensaje está causando spam y elevando los costos de almacenamiento.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "id": 30,
+      "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "Loki"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (msg) (count_over_time({service_name=~\"$service_name\"} | json | __error__=\"\" [5m])))",
+          "legendFormat": "{{msg}}",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Top 10 Logs Ruidosos (Noisy)",
+      "type": "bargauge"
     },
     {
       "collapsed": false,

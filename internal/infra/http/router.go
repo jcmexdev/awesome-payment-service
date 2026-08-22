@@ -71,9 +71,8 @@ func (r router) mapPaymentsRouter(mux *chi.Mux) {
 			panic("idempotency middleware is required")
 		}
 
-		v1.Use(r.idempotencyMiddleware.Handler)
-		v1.Post("/accounts", r.paymentsController.CreateAccount)
-		v1.Post("/payments", r.paymentsController.CreatePayment)
+		v1.With(r.idempotencyMiddleware.WithPrefix("account").Handler).Post("/accounts", r.paymentsController.CreateAccount)
+		v1.With(r.idempotencyMiddleware.WithPrefix("payment").Handler).Post("/payments", r.paymentsController.CreatePayment)
 	})
 
 }
