@@ -19,6 +19,13 @@
                     }
                 ]
             }
+        },
+        "telemetry/logging": {
+            "level": "ERROR",
+            "prefix": "[KRAKEND]",
+            "syslog": false,
+            "stdout": true,
+            "format": "default"
         }
     },
     "endpoints": [

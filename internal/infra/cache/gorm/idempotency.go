@@ -4,12 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jcmexdev/payment-service/internal/domain"
+	"github.com/jcmexdev/payment-service/internal/domain/constants"
+	"github.com/jcmexdev/payment-service/internal/infra/telemetry"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/gorm/logger"
 	"gorm.io/plugin/opentelemetry/tracing"
 )
 
@@ -22,7 +26,11 @@ func NewConnection(ctx context.Context, dsn string) (*gorm.DB, error) {
 		return nil, errors.New("database dsn required")
 	}
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	gormLogger := telemetry.NewGormSlogLogger(slog.Default(), 200*time.Millisecond)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: gormLogger.LogMode(logger.Silent),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open postgres database: %w", err)
 	}
@@ -74,6 +82,7 @@ func NewIdempotencyCache(ctx context.Context, db *gorm.DB) (*IdempotencyCache, e
 func (i IdempotencyCache) Lock(ctx context.Context, key string, ttl time.Duration) (bool, *domain.IdempotencyRecord, error) {
 	now := time.Now().UTC()
 	expiresAt := now.Add(ttl)
+	reqID, _ := ctx.Value(constants.ContextKeyRequestID).(string)
 
 	// Clean up expired records
 	_ = i.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&domain.IdempotencyRecord{}).Error
@@ -82,6 +91,7 @@ func (i IdempotencyCache) Lock(ctx context.Context, key string, ttl time.Duratio
 		Key:       key,
 		Status:    domain.IdempotencyStatusProcessing,
 		ExpiresAt: expiresAt,
+		RequestID: reqID,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -108,11 +118,14 @@ func (i IdempotencyCache) Save(ctx context.Context, key string, statusCode int, 
 	now := time.Now().UTC()
 	expiresAt := now.Add(ttl)
 
+	reqID, _ := ctx.Value(constants.ContextKeyRequestID).(string)
+
 	rec := domain.IdempotencyRecord{
 		Key:          key,
 		Status:       domain.IdempotencyStatusCompleted,
 		ResponseCode: statusCode,
 		ResponseBody: body,
+		RequestID:    reqID,
 		ExpiresAt:    expiresAt,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -120,7 +133,7 @@ func (i IdempotencyCache) Save(ctx context.Context, key string, statusCode int, 
 
 	err := i.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"status", "response_code", "response_body", "expires_at", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"status", "response_code", "response_body", "expires_at", "updated_at", "request_id"}),
 	}).Create(&rec).Error
 	if err != nil {
 		return fmt.Errorf("database upsert failed: %w", err)

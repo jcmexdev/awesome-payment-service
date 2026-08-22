@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jcmexdev/payment-service/internal/infra/http/consts"
 )
 
 type Account struct {
@@ -237,8 +238,8 @@ func sendPayment(client *http.Client, baseURL, accountID string, amount int64, t
 		atomic.AddInt64(errorsCount, 1)
 
 		// Imprimir detalles de traza para depuración ante fallos
-		reqID := resp.Header.Get("X-Request-ID")
-		traceID := resp.Header.Get("X-Trace-ID")
+		reqID := resp.Header.Get(consts.HeaderRequestID)
+		traceID := resp.Header.Get(consts.HeaderTraceID)
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		fmt.Printf("[GEN-FAIL] Status: %d | RequestID: %s | TraceID: %s | Response: %s\n",
 			resp.StatusCode, reqID, traceID, string(bodyBytes))

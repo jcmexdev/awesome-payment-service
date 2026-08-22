@@ -9,11 +9,19 @@ exporters:
     endpoint: "tempo:4317"
     tls:
       insecure: true
+  prometheus:
+    endpoint: "0.0.0.0:8889"
   debug:
     verbosity: detailed
+
+connectors:
+  spanmetrics:
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [otlp/tempo, debug]
+      exporters: [otlp/tempo, spanmetrics, debug]
+    metrics:
+      receivers: [otlp, spanmetrics]
+      exporters: [prometheus]

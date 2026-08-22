@@ -38,9 +38,9 @@ func WithPaymentsController(checkHandler handler.PaymentsController) Options {
 func NewRouter(options ...Options) *chi.Mux {
 	r := &router{}
 	mux := chi.NewRouter()
-	mux.Use(otelchi.Middleware("payment-service", otelchi.WithChiRoutes(mux)))
+	mux.Use(otelchi.Middleware("payment_service", otelchi.WithChiRoutes(mux)))
 	mux.Use(appmiddleware.TelemetryMiddleware) // Global tracing ID middleware
-	mux.Use(middleware.Logger)
+	mux.Use(appmiddleware.PrometheusMetricsMiddleware)
 	mux.Use(middleware.Recoverer)
 	for _, option := range options {
 		option(r)
@@ -71,9 +71,8 @@ func (r router) mapPaymentsRouter(mux *chi.Mux) {
 			panic("idempotency middleware is required")
 		}
 
-		v1.Use(r.idempotencyMiddleware.Handler)
-		v1.Post("/accounts", r.paymentsController.CreateAccount)
-		v1.Post("/payments", r.paymentsController.CreatePayment)
+		v1.With(r.idempotencyMiddleware.WithPrefix("account").Handler).Post("/accounts", r.paymentsController.CreateAccount)
+		v1.With(r.idempotencyMiddleware.WithPrefix("payment").Handler).Post("/payments", r.paymentsController.CreatePayment)
 	})
 
 }

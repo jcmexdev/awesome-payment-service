@@ -88,12 +88,12 @@ func (r *LedgerRepository) ProcessPayment(ctx context.Context, accountID string,
 
 		// 3. Registro inmutable del movimiento en LedgerEntry (Débito es negativo)
 		entry := domain.LedgerEntry{
-			ID:          uuid.New().String(),
-			AccountID:   accountID,
-			Amount:      -amountCents,
-			Type:        "PAYMENT",
-			ReferenceID: referenceID,
-			CreatedAt:   time.Now().UTC(),
+			ID:        uuid.New().String(),
+			AccountID: accountID,
+			Amount:    -amountCents,
+			Type:      "PAYMENT",
+			RequestId: referenceID,
+			CreatedAt: time.Now().UTC(),
 		}
 		if err := tx.Create(&entry).Error; err != nil {
 			return errors.NewAppError(errors.TypeValidationError, "PAYMENT_DUPLICATED", "failed to register ledger entry (unique reference ID constraint violation)", err).

@@ -6,7 +6,23 @@ scrape_configs:
   - job_name: 'payment-service'
     static_configs:
       - targets: ['payment-service:8080']
+        labels:
+          service_name: 'payment_service'
 
   - job_name: 'postgres-exporter'
     static_configs:
       - targets: ['postgres-exporter:9187']
+        labels:
+          service_name: 'payment_postgres'
+
+  - job_name: 'redis-exporter'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service_name: 'payment_redis'
+
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:8889']
+        labels:
+          service_name: 'otel_collector'

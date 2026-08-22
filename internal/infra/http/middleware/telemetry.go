@@ -7,13 +7,9 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/jcmexdev/payment-service/internal/domain"
+	"github.com/jcmexdev/payment-service/internal/domain/constants"
+	"github.com/jcmexdev/payment-service/internal/infra/http/consts"
 	"go.opentelemetry.io/otel/trace"
-)
-
-const (
-	HeaderRequestID = "X-Request-ID"
-	HeaderTraceID   = "X-Trace-ID"
 )
 
 func TelemetryMiddleware(next http.Handler) http.Handler {
@@ -21,7 +17,7 @@ func TelemetryMiddleware(next http.Handler) http.Handler {
 		ctx := r.Context()
 
 		// 1. Obtener o generar Request ID
-		reqID := r.Header.Get(HeaderRequestID)
+		reqID := r.Header.Get(consts.HeaderRequestID)
 		if reqID == "" {
 			reqID = uuid.New().String()
 		}
@@ -32,7 +28,7 @@ func TelemetryMiddleware(next http.Handler) http.Handler {
 		if spanCtx.IsValid() {
 			traceID = spanCtx.TraceID().String()
 		} else {
-			traceID = r.Header.Get(HeaderTraceID)
+			traceID = r.Header.Get(consts.HeaderTraceID)
 			if traceID == "" {
 				// Generar ID de 16 bytes (32 caracteres hexadecimales) compatible con OTEL
 				bytes := make([]byte, 16)
@@ -45,12 +41,12 @@ func TelemetryMiddleware(next http.Handler) http.Handler {
 		}
 
 		// 3. Inyectar IDs en el Contexto
-		ctx = context.WithValue(ctx, domain.ContextKeyRequestID, reqID)
-		ctx = context.WithValue(ctx, domain.ContextKeyTraceID, traceID)
+		ctx = context.WithValue(ctx, constants.ContextKeyRequestID, reqID)
+		ctx = context.WithValue(ctx, constants.ContextKeyTraceID, traceID)
 
 		// 4. Inyectar encabezados en la respuesta HTTP
-		w.Header().Set(HeaderRequestID, reqID)
-		w.Header().Set(HeaderTraceID, traceID)
+		w.Header().Set(consts.HeaderRequestID, reqID)
+		w.Header().Set(consts.HeaderTraceID, traceID)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

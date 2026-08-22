@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jcmexdev/payment-service/internal/domain"
+	"github.com/jcmexdev/payment-service/internal/domain/constants"
 	"github.com/jcmexdev/payment-service/internal/domain/ports"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
@@ -57,12 +58,12 @@ func (u *PaymentUseCase) ProcessPayment(ctx context.Context, accountID string, a
 	defer span.End()
 
 	// Chaos Engineering: Inyección de Latencia
-	if delay, ok := ctx.Value(domain.ContextKeySimulateDelay).(time.Duration); ok && delay > 0 {
+	if delay, ok := ctx.Value(constants.ContextKeySimulateDelay).(time.Duration); ok && delay > 0 {
 		time.Sleep(delay)
 	}
 
 	// Chaos Engineering: Inyección de Errores
-	if fail, ok := ctx.Value(domain.ContextKeySimulateError).(bool); ok && fail {
+	if fail, ok := ctx.Value(constants.ContextKeySimulateError).(bool); ok && fail {
 		err := errors.New("simulated transaction failure: database deadlock detected")
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())

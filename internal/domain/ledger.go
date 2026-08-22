@@ -16,12 +16,12 @@ type Account struct {
 }
 
 type LedgerEntry struct {
-	ID          string    `gorm:"primaryKey;type:varchar(255)"`
-	AccountID   string    `gorm:"index;type:varchar(255);not null"`
-	Amount      int64     `gorm:"not null"` // in cents: positive = credit, negative = debit
-	Type        string    `gorm:"type:varchar(50);not null"`
-	ReferenceID string    `gorm:"uniqueIndex;type:varchar(255);not null"`
-	CreatedAt   time.Time `gorm:"not null"`
+	ID        string    `gorm:"primaryKey;type:varchar(255)"`
+	AccountID string    `gorm:"index;type:varchar(255);not null"`
+	Amount    int64     `gorm:"not null"` // in cents: positive = credit, negative = debit
+	Type      string    `gorm:"type:varchar(50);not null"`
+	RequestId string    `gorm:"uniqueIndex;type:varchar(255);not null"`
+	CreatedAt time.Time `gorm:"not null"`
 }
 
 func (a *Account) Validate() error {
@@ -50,17 +50,8 @@ func (le *LedgerEntry) Validate() error {
 	if le.Type == "" {
 		return errors.New("ledger entry type is required")
 	}
-	if le.ReferenceID == "" {
-		return errors.New("ledger entry reference ID is required")
+	if le.RequestId == "" {
+		return errors.New("ledger entry request ID is required")
 	}
 	return nil
 }
-
-type ContextKey string
-
-const (
-	ContextKeySimulateDelay ContextKey = "simulate-delay"
-	ContextKeySimulateError ContextKey = "simulate-error"
-	ContextKeyRequestID     ContextKey = "request-id"
-	ContextKeyTraceID       ContextKey = "trace-id"
-)

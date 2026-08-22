@@ -11,3 +11,7 @@ type PaymentUseCase interface {
 	GetAccount(ctx context.Context, id string) (*domain.Account, error)
 	ProcessPayment(ctx context.Context, accountID string, amountCents int64, referenceID string) error
 }
+
+type UseCase interface {
+	Execute() error
+}

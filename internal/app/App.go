@@ -33,7 +33,21 @@ type App struct {
 }
 
 func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
-	jsonHandler := slog.NewJSONHandler(os.Stdout, nil)
+	var level slog.Level
+	switch cfg.LogLevel {
+	case "debug", "DEBUG":
+		level = slog.LevelDebug
+	case "warn", "WARN":
+		level = slog.LevelWarn
+	case "error", "ERROR":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	})
 	logger := slog.New(telemetry.NewContextHandler(jsonHandler))
 	slog.SetDefault(logger)
 
@@ -127,6 +141,7 @@ func initRedis(ctx context.Context, addr string) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{Addr: addr})
 
 	client.AddHook(telemetry.NewOpenTelemetryRedisHook())
+	client.AddHook(telemetry.NewPrometheusRedisHook())
 
 	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
