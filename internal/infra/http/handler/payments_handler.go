@@ -3,13 +3,12 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jcmexdev/payment-service/internal/domain"
 	"github.com/jcmexdev/payment-service/internal/domain/constants"
+	"github.com/jcmexdev/payment-service/internal/domain/errors"
 	"github.com/jcmexdev/payment-service/internal/domain/ports"
 	"github.com/jcmexdev/payment-service/internal/infra/http/consts"
 	"github.com/jcmexdev/payment-service/internal/infra/http/dtos"
@@ -18,68 +17,21 @@ import (
 
 type PaymentsController interface {
 	CreatePayment(w http.ResponseWriter, r *http.Request)
-	CreateAccount(w http.ResponseWriter, r *http.Request)
 }
 
 type PaymentsHandler struct {
-	paymentUseCase ports.PaymentUseCase
+	paymentUseCase ports.AuthorizePaymentUseCase
 }
 
-func NewPaymentsHandler(paymentUseCase ports.PaymentUseCase) *PaymentsHandler {
+func NewPaymentsHandler(paymentUseCase ports.AuthorizePaymentUseCase) *PaymentsHandler {
 	return &PaymentsHandler{paymentUseCase: paymentUseCase}
-}
-
-func (h PaymentsHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		UserID   string `json:"user_id"`
-		Currency string `json:"currency"`
-		Balance  int64  `json:"balance"` // En centavos
-	}
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		response.SendError(w, r, http.StatusBadRequest, response.CodeMalformedJSON, nil)
-		return
-	}
-
-	if req.UserID == "" {
-		response.SendError(w, r, http.StatusBadRequest, response.CodeMissingUserId, []response.ErrorDetail{
-			{Field: "user_id", Reason: "user_id is required"},
-		})
-		return
-	}
-	if len(req.Currency) != 3 {
-		response.SendError(w, r, http.StatusBadRequest, "INVALID_CURRENCY", []response.ErrorDetail{
-			{Field: "currency", Reason: "currency must be a 3-character ISO-4217 code"},
-		})
-		return
-	}
-
-	account := domain.Account{
-		ID:            uuid.New().String(),
-		UserID:        req.UserID,
-		Currency:      req.Currency,
-		CachedBalance: req.Balance,
-		Version:       0,
-		CreatedAt:     time.Now().UTC(),
-		UpdatedAt:     time.Now().UTC(),
-	}
-
-	ctx := r.Context()
-	err = h.paymentUseCase.CreateAccount(ctx, &account)
-	if err != nil {
-		response.HandleError(w, r, err, "CreateAccount failed")
-		return
-	}
-
-	slog.InfoContext(ctx, "CreateAccount successful", "account_id", account.ID, "user_id", account.UserID)
-	response.SendSuccess(w, r, http.StatusCreated, response.CodeAccountCreated, dtos.NewCreateAccountResponse(&account))
 }
 
 func (h PaymentsHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	var req dtos.PaymentRequestDTO
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		response.SendError(w, r, http.StatusBadRequest, response.CodeMalformedJSON, nil)
+		response.SendError(w, r, http.StatusBadRequest, errors.CodeMalformedJSON, nil)
 		return
 	}
 
@@ -113,7 +65,7 @@ func (h PaymentsHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Invocar el caso de uso que encapsula la lógica de negocio y su span principal
-	err = h.paymentUseCase.ProcessPayment(ctx, req.AccountID, req.Amount, refID)
+	/*_,err = h.paymentUseCase.Execute(ctx, req.AccountID, req.Amount, refID)
 	if err != nil {
 		response.HandleError(w, r, err, "ProcessPayment failed")
 		return
@@ -130,5 +82,5 @@ func (h PaymentsHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 
 	dto := dtos.PaymentFromDomain(&payment)
 	slog.InfoContext(ctx, "ProcessPayment successful", "account_id", req.AccountID, "reference_id", refID)
-	response.SendSuccess(w, r, http.StatusAccepted, response.CodePaymentAccepted, dto)
+	response.SendSuccess(w, r, http.StatusAccepted, errors.CodePaymentAccepted, dto)*/
 }

@@ -28,10 +28,10 @@ func HandleError(w http.ResponseWriter, r *http.Request, err error, logMsg strin
 		if appErr.Err != nil {
 			logArgs = append(logArgs, slog.String("error", appErr.Err.Error()))
 		}
-		// Agrupación híbrida en error_details
-		if len(appErr.Context) > 0 {
+
+		if len(appErr.LogContext) > 0 {
 			var groupAttrs []any
-			for k, v := range appErr.Context {
+			for k, v := range appErr.LogContext {
 				groupAttrs = append(groupAttrs, slog.Any(k, v))
 			}
 			logArgs = append(logArgs, slog.Group("error_details", groupAttrs...))
@@ -41,7 +41,6 @@ func HandleError(w http.ResponseWriter, r *http.Request, err error, logMsg strin
 		slog.ErrorContext(ctx, logMsg, "error", err)
 	}
 
-	// Mapear y enviar error por HTTP
 	status, code, details := TranslateAppError(err)
 	SendError(w, r, status, code, details)
 }
@@ -60,7 +59,7 @@ func SendError(w http.ResponseWriter, r *http.Request, statusCode int, errorCode
 	resp := ErrorResponse{
 		Status:  "error",
 		Code:    errorCode,
-		Message: GetMessage(errorCode),
+		Message: appErrors.GetMessage(errorCode),
 		Meta: &Meta{
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 			RequestID: reqID,
@@ -86,7 +85,7 @@ func SendSuccess[T any](w http.ResponseWriter, r *http.Request, statusCode int, 
 	resp := SuccessResponse[T]{
 		Status:  "success",
 		Code:    successCode,
-		Message: GetMessage(successCode),
+		Message: appErrors.GetMessage(successCode),
 		Meta: &Meta{
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 			RequestID: reqID,

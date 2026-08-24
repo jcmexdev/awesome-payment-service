@@ -20,24 +20,8 @@ func NewPaymentUseCase(ledgerRepo ports.LedgerRepository) *PaymentUseCase {
 	return &PaymentUseCase{ledgerRepo: ledgerRepo}
 }
 
-func (u *PaymentUseCase) CreateAccount(ctx context.Context, account *domain.Account) error {
-	tr := otel.Tracer("payment-service")
-	ctx, span := tr.Start(ctx, "payment.create_account")
-	defer span.End()
-
-	err := u.ledgerRepo.CreateAccount(ctx, account)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return err
-	}
-
-	span.SetStatus(codes.Ok, "account created successfully")
-	return nil
-}
-
 func (u *PaymentUseCase) GetAccount(ctx context.Context, id string) (*domain.Account, error) {
-	tr := otel.Tracer("payment-service")
+	/*tr := otel.Tracer("payment-service")
 	ctx, span := tr.Start(ctx, "payment.get_account")
 	defer span.End()
 
@@ -49,7 +33,8 @@ func (u *PaymentUseCase) GetAccount(ctx context.Context, id string) (*domain.Acc
 	}
 
 	span.SetStatus(codes.Ok, "account retrieved successfully")
-	return account, nil
+	return account, nil*/
+	return nil, nil
 }
 
 func (u *PaymentUseCase) ProcessPayment(ctx context.Context, accountID string, amountCents int64, referenceID string) error {

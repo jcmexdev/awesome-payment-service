@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+type AuthorizePaymentRequest struct {
+	AccountID string
+	Amount    int64
+	Currency  string
+	Status    string
+}
+
 type Payment struct {
 	ID        string
 	AccountID string

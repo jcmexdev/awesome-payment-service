@@ -1,22 +1,16 @@
 package errors
 
-import "fmt"
-
-type ErrorType string
-
-const (
-	TypeNotFound        ErrorType = "NOT_FOUND"
-	TypeValidationError ErrorType = "VALIDATION"
-	TypeUnauthorized    ErrorType = "UNAUTHORIZED"
-	TypeInternal        ErrorType = "INTERNAL"
+import (
+	"fmt"
 )
 
 type AppError struct {
-	Type    ErrorType
-	Code    string
-	Message string
-	Err     error
-	Context map[string]any // Metadatos clave-valor adicionales para logs estructurados
+	Type       ErrorType
+	Code       string
+	Message    string
+	Err        error
+	LogContext map[string]any
+	Details    map[string]any
 }
 
 func (e *AppError) Error() string {
@@ -30,13 +24,20 @@ func (e *AppError) Unwrap() error {
 	return e.Err
 }
 
-// WithContext permite adjuntar información estructurada al error
-func (e *AppError) WithContext(key string, value any) *AppError {
-	if e.Context == nil {
-		e.Context = make(map[string]any)
+// WithLogContext permite adjuntar información estructurada al error
+func (e *AppError) WithLogContext(key string, value any) *AppError {
+	if e.LogContext == nil {
+		e.LogContext = make(map[string]any)
 	}
-	e.Context[key] = value
+	e.LogContext[key] = value
 	return e
+}
+
+func (e *AppError) WithDetail(key string, value any) {
+	if e.Details == nil {
+		e.Details = make(map[string]any)
+	}
+	e.Details[key] = value
 }
 
 func NewAppError(errType ErrorType, code string, msg string, original error) *AppError {

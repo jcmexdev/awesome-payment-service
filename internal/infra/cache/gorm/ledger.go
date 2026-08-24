@@ -25,13 +25,13 @@ func NewLedgerRepository(db *gormio.DB) *LedgerRepository {
 func (r *LedgerRepository) CreateAccount(ctx context.Context, account *domain.Account) error {
 	if err := account.Validate(); err != nil {
 		return errors.NewAppError(errors.TypeValidationError, "INVALID_ACCOUNT", "invalid account validation failure", err).
-			WithContext("user_id", account.UserID).
-			WithContext("currency", account.Currency)
+			WithLogContext("user_id", account.UserID).
+			WithLogContext("currency", account.Currency)
 	}
 	if err := r.db.WithContext(ctx).Create(account).Error; err != nil {
 		return errors.NewAppError(errors.TypeInternal, "DATABASE_ERROR", "failed to create account", err).
-			WithContext("user_id", account.UserID).
-			WithContext("currency", account.Currency)
+			WithLogContext("user_id", account.UserID).
+			WithLogContext("currency", account.Currency)
 	}
 	return nil
 }
@@ -41,10 +41,10 @@ func (r *LedgerRepository) GetAccount(ctx context.Context, id string) (*domain.A
 	if err := r.db.WithContext(ctx).First(&account, "id = ?", id).Error; err != nil {
 		if err == gormio.ErrRecordNotFound {
 			return nil, errors.NewAppError(errors.TypeNotFound, "ACCOUNT_NOT_FOUND", "account not found", err).
-				WithContext("account_id", id)
+				WithLogContext("account_id", id)
 		}
 		return nil, errors.NewAppError(errors.TypeInternal, "DATABASE_ERROR", "failed to retrieve account", err).
-			WithContext("account_id", id)
+			WithLogContext("account_id", id)
 	}
 	return &account, nil
 }
@@ -52,12 +52,12 @@ func (r *LedgerRepository) GetAccount(ctx context.Context, id string) (*domain.A
 func (r *LedgerRepository) ProcessPayment(ctx context.Context, accountID string, amountCents int64, referenceID string) error {
 	if amountCents <= 0 {
 		return errors.NewAppError(errors.TypeValidationError, "INVALID_PAYMENT", "payment amount must be greater than zero", nil).
-			WithContext("account_id", accountID).
-			WithContext("amount_cents", amountCents)
+			WithLogContext("account_id", accountID).
+			WithLogContext("amount_cents", amountCents)
 	}
 	if referenceID == "" {
 		return errors.NewAppError(errors.TypeValidationError, "INVALID_PAYMENT", "reference ID is required", nil).
-			WithContext("account_id", accountID)
+			WithLogContext("account_id", accountID)
 	}
 
 	tr := otel.Tracer("payment-service")
@@ -72,18 +72,18 @@ func (r *LedgerRepository) ProcessPayment(ctx context.Context, accountID string,
 		if err != nil {
 			if err == gormio.ErrRecordNotFound {
 				return errors.NewAppError(errors.TypeNotFound, "ACCOUNT_NOT_FOUND", "failed to locate account with pessimistic lock: record not found", err).
-					WithContext("account_id", accountID)
+					WithLogContext("account_id", accountID)
 			}
 			return errors.NewAppError(errors.TypeInternal, "DATABASE_ERROR", "failed to locate account with pessimistic lock", err).
-				WithContext("account_id", accountID)
+				WithLogContext("account_id", accountID)
 		}
 
 		// 2. Validación de saldo suficiente
 		if account.CachedBalance < amountCents {
 			return errors.NewAppError(errors.TypeValidationError, "INSUFFICIENT_BALANCE", fmt.Sprintf("insufficient balance: account balance is %d cents, requested payment is %d cents", account.CachedBalance, amountCents), nil).
-				WithContext("account_id", accountID).
-				WithContext("cached_balance", account.CachedBalance).
-				WithContext("requested_amount", amountCents)
+				WithLogContext("account_id", accountID).
+				WithLogContext("cached_balance", account.CachedBalance).
+				WithLogContext("requested_amount", amountCents)
 		}
 
 		// 3. Registro inmutable del movimiento en LedgerEntry (Débito es negativo)
@@ -97,8 +97,8 @@ func (r *LedgerRepository) ProcessPayment(ctx context.Context, accountID string,
 		}
 		if err := tx.Create(&entry).Error; err != nil {
 			return errors.NewAppError(errors.TypeValidationError, "PAYMENT_DUPLICATED", "failed to register ledger entry (unique reference ID constraint violation)", err).
-				WithContext("account_id", accountID).
-				WithContext("reference_id", referenceID)
+				WithLogContext("account_id", accountID).
+				WithLogContext("reference_id", referenceID)
 		}
 
 		// 4. Actualización del balance e incremento de la versión
@@ -108,8 +108,8 @@ func (r *LedgerRepository) ProcessPayment(ctx context.Context, accountID string,
 
 		if err := tx.Save(&account).Error; err != nil {
 			return errors.NewAppError(errors.TypeInternal, "DATABASE_ERROR", "failed to update account balance", err).
-				WithContext("account_id", accountID).
-				WithContext("cached_balance", account.CachedBalance)
+				WithLogContext("account_id", accountID).
+				WithLogContext("cached_balance", account.CachedBalance)
 		}
 
 		return nil

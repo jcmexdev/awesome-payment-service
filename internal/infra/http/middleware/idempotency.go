@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jcmexdev/payment-service/internal/domain/errors"
 	"github.com/jcmexdev/payment-service/internal/domain/ports"
 	"github.com/jcmexdev/payment-service/internal/infra/http/consts"
+	"github.com/jcmexdev/payment-service/internal/infra/http/response"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -72,7 +74,11 @@ func (m *IdempotencyMiddleware) Handler(next http.Handler) http.Handler {
 
 		if !acquired && record != nil {
 			if record.IsProcessing() {
-				http.Error(w, `{"error":"request_in_progress","message":"A request with this idempotency key is currently processing"}`, http.StatusConflict)
+				appErr := errors.NewAppError(
+					errors.TypeConflict,
+					errors.CodeIdempotencyConflict,
+					errors.GetMessage(errors.CodeIdempotencyConflict), nil)
+				response.HandleError(w, r, appErr, "Idempotency_middleware_processing_error")
 				return
 			}
 

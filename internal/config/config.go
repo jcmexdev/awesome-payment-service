@@ -15,6 +15,7 @@ type Config struct {
 	OtelCollectorAddr   string
 	OtelServiceName     string
 	DatabaseURL         string
+	ServiceName         string
 }
 
 func Load() *Config {
@@ -28,6 +29,7 @@ func Load() *Config {
 		OtelCollectorAddr:   getEnv("OTEL_COLLECTOR_ADDR", ""),
 		OtelServiceName:     getEnv("OTEL_SERVICE_NAME", "payment-service"),
 		DatabaseURL:         getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"),
+		ServiceName:         getEnv("SERVICE_NAME", "payment-service"),
 	}
 }
 

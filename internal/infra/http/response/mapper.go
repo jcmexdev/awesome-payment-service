@@ -25,12 +25,22 @@ func TranslateAppError(err error) (int, string, []ErrorDetail) {
 			status = http.StatusUnauthorized
 		case appErrors.TypeInternal:
 			status = http.StatusInternalServerError
+		case appErrors.TypeConflict:
+			status = http.StatusConflict
+
 		default:
 			status = http.StatusInternalServerError
 		}
 
-		details := []ErrorDetail{
-			{Reason: appErr.Message},
+		var details []ErrorDetail
+
+		for field, reasonVal := range appErr.Details {
+			if reasonStr, ok := reasonVal.(string); ok {
+				details = append(details, ErrorDetail{
+					Field:  field,
+					Reason: reasonStr,
+				})
+			}
 		}
 
 		return status, appErr.Code, details

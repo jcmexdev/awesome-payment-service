@@ -17,6 +17,7 @@ import (
 	router "github.com/jcmexdev/payment-service/internal/infra/http"
 	"github.com/jcmexdev/payment-service/internal/infra/http/handler"
 	"github.com/jcmexdev/payment-service/internal/infra/http/middleware"
+	"github.com/jcmexdev/payment-service/internal/infra/persistence/postgres"
 	"github.com/jcmexdev/payment-service/internal/infra/telemetry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -112,12 +113,16 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	idempMiddleware := middleware.NewIdempotencyMiddleware(idempotencyPersistence, cfg.IdempotencyTTL)
 
 	ledgerRepo := gorm.NewLedgerRepository(gormDB)
+	accountRepository := postgres.NewAccountRepository(gormDB)
+
+	accountUseCase := usecase.NewCreateAccountUseCase(accountRepository)
 	paymentUseCase := usecase.NewPaymentUseCase(ledgerRepo)
 
 	r := router.NewRouter(
 		router.WithHealthController(handler.NewHealthHandler()),
 		router.WithPaymentsController(handler.NewPaymentsHandler(paymentUseCase)),
 		router.WithIdempotencyMiddleware(idempMiddleware),
+		router.WithAccountController(handler.NewAccountHandler(accountUseCase, cfg.ServiceName)),
 	)
 	srv := &http.Server{
 		Addr:    ":" + cfg.Port,

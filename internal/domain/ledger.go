@@ -5,16 +5,6 @@ import (
 	"time"
 )
 
-type Account struct {
-	ID            string    `gorm:"primaryKey;type:varchar(255)"`
-	UserID        string    `gorm:"index;type:varchar(255);not null"`
-	Currency      string    `gorm:"type:varchar(10);not null"`
-	CachedBalance int64     `gorm:"not null;default:0"`
-	Version       int       `gorm:"not null;default:0"`
-	CreatedAt     time.Time `gorm:"not null"`
-	UpdatedAt     time.Time `gorm:"not null"`
-}
-
 type LedgerEntry struct {
 	ID        string    `gorm:"primaryKey;type:varchar(255)"`
 	AccountID string    `gorm:"index;type:varchar(255);not null"`

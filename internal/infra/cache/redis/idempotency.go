@@ -69,7 +69,6 @@ func (i IdempotencyCache) Lock(ctx context.Context, key string, ttl time.Duratio
 }
 
 func (i IdempotencyCache) Save(ctx context.Context, key string, statusCode int, body []byte, ttl time.Duration) error {
-	redisKey := fmt.Sprintf("idempotency:%s", key)
 	now := time.Now().UTC()
 
 	reqID, _ := ctx.Value(constants.ContextKeyRequestID).(string)
@@ -89,7 +88,7 @@ func (i IdempotencyCache) Save(ctx context.Context, key string, statusCode int, 
 		return fmt.Errorf("failed to marshal idempotency record: %w", err)
 	}
 
-	if err := i.client.Set(ctx, redisKey, data, ttl).Err(); err != nil {
+	if err := i.client.Set(ctx, key, data, ttl).Err(); err != nil {
 		return fmt.Errorf("redis set error during save: %w", err)
 	}
 

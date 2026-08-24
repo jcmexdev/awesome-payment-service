@@ -2,52 +2,71 @@ package middleware
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"net/http"
 
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"github.com/jcmexdev/payment-service/internal/domain/constants"
 	"github.com/jcmexdev/payment-service/internal/infra/http/consts"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
-func TelemetryMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
+func TelemetryMiddleware(serviceName string) func(http.Handler) http.Handler {
+	tracer := otel.Tracer(serviceName)
 
-		// 1. Obtener o generar Request ID
-		reqID := r.Header.Get(consts.HeaderRequestID)
-		if reqID == "" {
-			reqID = uuid.New().String()
-		}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
 
-		// 2. Obtener o generar Trace ID
-		var traceID string
-		spanCtx := trace.SpanContextFromContext(ctx)
-		if spanCtx.IsValid() {
-			traceID = spanCtx.TraceID().String()
-		} else {
-			traceID = r.Header.Get(consts.HeaderTraceID)
-			if traceID == "" {
-				// Generar ID de 16 bytes (32 caracteres hexadecimales) compatible con OTEL
-				bytes := make([]byte, 16)
-				if _, err := rand.Read(bytes); err == nil {
-					traceID = hex.EncodeToString(bytes)
-				} else {
-					traceID = uuid.New().String()
-				}
+			reqID := r.Header.Get(consts.HeaderRequestID)
+			if reqID == "" {
+				reqID = uuid.New().String()
 			}
-		}
 
-		// 3. Inyectar IDs en el Contexto
-		ctx = context.WithValue(ctx, constants.ContextKeyRequestID, reqID)
-		ctx = context.WithValue(ctx, constants.ContextKeyTraceID, traceID)
+			propagator := otel.GetTextMapPropagator()
+			ctx = propagator.Extract(ctx, propagation.HeaderCarrier(r.Header))
 
-		// 4. Inyectar encabezados en la respuesta HTTP
-		w.Header().Set(consts.HeaderRequestID, reqID)
-		w.Header().Set(consts.HeaderTraceID, traceID)
+			spanName := r.Method + " " + r.URL.Path
+			ctx, span := tracer.Start(ctx, spanName,
+				trace.WithSpanKind(trace.SpanKindServer),
+				trace.WithAttributes(
+					semconv.HTTPRequestMethodKey.String(r.Method),
+					semconv.URLPath(r.URL.Path),
+					attribute.String("request.id", reqID),
+				),
+			)
+			defer span.End()
 
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+			spanCtx := trace.SpanContextFromContext(ctx)
+			var traceID string
+			if spanCtx.IsValid() {
+				traceID = spanCtx.TraceID().String()
+			}
+
+			ctx = context.WithValue(ctx, constants.ContextKeyRequestID, reqID)
+			if traceID != "" {
+				ctx = context.WithValue(ctx, constants.ContextKeyTraceID, traceID)
+			}
+
+			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+
+			ww.Header().Set(consts.HeaderRequestID, reqID)
+			if traceID != "" {
+				ww.Header().Set(consts.HeaderTraceID, traceID)
+			}
+
+			next.ServeHTTP(ww, r.WithContext(ctx))
+
+			span.SetAttributes(semconv.HTTPResponseStatusCodeKey.Int(ww.Status()))
+
+			if ww.Status() >= 500 {
+				span.SetStatus(codes.Error, "Internal Server Error")
+			}
+		})
+	}
 }

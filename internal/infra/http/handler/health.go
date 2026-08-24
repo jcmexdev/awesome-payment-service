@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/jcmexdev/payment-service/internal/domain/errors"
 	"github.com/jcmexdev/payment-service/internal/infra/http/response"
 )
 
@@ -18,5 +19,5 @@ func NewHealthHandler() *HealthCheckHandler {
 }
 
 func (h HealthCheckHandler) Health(w http.ResponseWriter, r *http.Request) {
-	response.SendSuccess(w, r, http.StatusOK, response.CodeSystemHealthy, struct{}{})
+	response.SendSuccess(w, r, http.StatusOK, errors.CodeSystemHealthy, struct{}{})
 }

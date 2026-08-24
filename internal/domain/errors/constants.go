@@ -1,12 +1,25 @@
-package response
+package errors
+
+type ErrorType string
+
+const (
+	TypeNotFound        ErrorType = "NOT_FOUND"
+	TypeValidationError ErrorType = "VALIDATION"
+	TypeUnauthorized    ErrorType = "UNAUTHORIZED"
+	TypeInternal        ErrorType = "INTERNAL"
+	TypeConflict        ErrorType = "CONFLICT"
+)
 
 const (
 	CodeMalformedJSON         = "MALFORMED_JSON"
 	CodeEmptyRequestBody      = "EMPTY_REQUEST_BODY"
 	CodeMissingIdempotencyKey = "MISSING_IDEMPOTENCY_KEY"
 	CodeInvalidIdempotencyKey = "INVALID_IDEMPOTENCY_KEY"
-	CodeConcurrentRequest     = "CONCURRENT_REQUEST"
-	CodeMissingUserId         = "MISSING_USER_ID"
+	CodeInvalidAttributes     = "INVALID_ATTRIBUTES"
+
+	CodeConcurrentRequest = "CONCURRENT_REQUEST"
+	CodeMissingUserId     = "MISSING_USER_ID"
+	CodeInvalidCurrency   = "INVALID_CURRENCY"
 
 	CodeInternalServerError = "INTERNAL_SERVER_ERROR"
 
@@ -14,6 +27,9 @@ const (
 	CodePaymentAccepted = "PAYMENT_ACCEPTED"
 	CodePaymentSettled  = "PAYMENT_SETTLED"
 	CodeAccountCreated  = "ACCOUNT_CREATED"
+
+	CodeDataBaseError       = "DATABASE_ERROR"
+	CodeIdempotencyConflict = "IDEMPOTENCY_CONFLICT"
 )
 
 func GetMessage(code string) string {
@@ -27,8 +43,6 @@ func GetMessage(code string) string {
 		return "Payment processed and settled successfully."
 	case CodeAccountCreated:
 		return "Account created successfully."
-	case CodeMissingUserId:
-		return "Missing user_id."
 
 	case CodeMalformedJSON:
 		return "The request payload could not be parsed due to malformed JSON syntax."
@@ -40,9 +54,17 @@ func GetMessage(code string) string {
 		return "Header 'Idempotency-Key' format is invalid."
 	case CodeConcurrentRequest:
 		return "A request with this Idempotency-Key is currently being processed."
+	case CodeMissingUserId:
+		return "Missing user_id."
+	case CodeInvalidCurrency:
+		return "Currency must be a 3-character ISO-4217 code"
+	case CodeInvalidAttributes:
+		return "The request has invalid attributes."
 
 	case CodeInternalServerError:
 		return "An unexpected internal error occurred."
+	case CodeIdempotencyConflict:
+		return "A request with this idempotency key is currently being processed."
 	default:
 		return "An unexpected error occurred."
 	}
