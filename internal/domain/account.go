@@ -21,21 +21,21 @@ func (r CreateAccountRequest) Validate() error {
 
 func (r CreateAccountRequest) NewDomainAccount() *Account {
 	return &Account{
-		ID:            uuid.New().String(),
-		UserID:        r.UserID,
-		Currency:      r.Currency,
-		CachedBalance: r.Balance,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		ID:        uuid.New().String(),
+		UserID:    r.UserID,
+		Currency:  r.Currency,
+		Balance:   r.Balance,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 }
 
 type Account struct {
-	ID            string    `gorm:"primaryKey;type:varchar(255)"`
-	UserID        string    `gorm:"index;type:varchar(255);not null"`
-	Currency      string    `gorm:"type:varchar(10);not null"`
-	CachedBalance int64     `gorm:"not null;default:0"`
-	Version       int       `gorm:"not null;default:0"`
-	CreatedAt     time.Time `gorm:"not null"`
-	UpdatedAt     time.Time `gorm:"not null"`
+	ID        string    `gorm:"primaryKey;type:varchar(255)"`
+	UserID    string    `gorm:"index;type:varchar(255);not null"`
+	Currency  string    `gorm:"type:varchar(10);not null"`
+	Balance   int64     `gorm:"not null;default:0"`
+	Version   int       `gorm:"not null;default:0"`
+	CreatedAt time.Time `gorm:"not null"`
+	UpdatedAt time.Time `gorm:"not null"`
 }

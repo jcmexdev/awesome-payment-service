@@ -112,11 +112,13 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	idempotencyPersistence := cache.NewPersistenceCache(redisCacheRepo, gormCacheRepo, 50*time.Millisecond)
 	idempMiddleware := middleware.NewIdempotencyMiddleware(idempotencyPersistence, cfg.IdempotencyTTL)
 
-	ledgerRepo := gorm.NewLedgerRepository(gormDB)
 	accountRepository := postgres.NewAccountRepository(gormDB)
+	paymentsRepository := postgres.NewPaymentsRepository(gormDB)
+	outboxRepository := postgres.NewOutboxRepository(gormDB)
+	unitOfWork := postgres.NewGormUnitOfWork(gormDB)
 
 	accountUseCase := usecase.NewCreateAccountUseCase(accountRepository)
-	paymentUseCase := usecase.NewPaymentUseCase(ledgerRepo)
+	paymentUseCase := usecase.NewAuthorizePaymentUseCase(paymentsRepository, outboxRepository, unitOfWork)
 
 	r := router.NewRouter(
 		router.WithHealthController(handler.NewHealthHandler()),

@@ -21,7 +21,7 @@ func NewCreateAccountResponse(account *domain.Account) *CreateAccountResponse {
 		ID:            account.ID,
 		UserID:        account.UserID,
 		Currency:      account.Currency,
-		CachedBalance: account.CachedBalance,
+		CachedBalance: account.Balance,
 		Version:       account.Version,
 		CreatedAt:     account.CreatedAt,
 		UpdatedAt:     account.UpdatedAt,

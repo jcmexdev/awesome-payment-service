@@ -79,10 +79,10 @@ func (r *LedgerRepository) ProcessPayment(ctx context.Context, accountID string,
 		}
 
 		// 2. Validación de saldo suficiente
-		if account.CachedBalance < amountCents {
-			return errors.NewAppError(errors.TypeValidationError, "INSUFFICIENT_BALANCE", fmt.Sprintf("insufficient balance: account balance is %d cents, requested payment is %d cents", account.CachedBalance, amountCents), nil).
+		if account.Balance < amountCents {
+			return errors.NewAppError(errors.TypeValidationError, "INSUFFICIENT_BALANCE", fmt.Sprintf("insufficient balance: account balance is %d cents, requested payment is %d cents", account.Balance, amountCents), nil).
 				WithLogContext("account_id", accountID).
-				WithLogContext("cached_balance", account.CachedBalance).
+				WithLogContext("cached_balance", account.Balance).
 				WithLogContext("requested_amount", amountCents)
 		}
 
@@ -102,14 +102,14 @@ func (r *LedgerRepository) ProcessPayment(ctx context.Context, accountID string,
 		}
 
 		// 4. Actualización del balance e incremento de la versión
-		account.CachedBalance -= amountCents
+		account.Balance -= amountCents
 		account.Version += 1
 		account.UpdatedAt = time.Now().UTC()
 
 		if err := tx.Save(&account).Error; err != nil {
 			return errors.NewAppError(errors.TypeInternal, "DATABASE_ERROR", "failed to update account balance", err).
 				WithLogContext("account_id", accountID).
-				WithLogContext("cached_balance", account.CachedBalance)
+				WithLogContext("cached_balance", account.Balance)
 		}
 
 		return nil

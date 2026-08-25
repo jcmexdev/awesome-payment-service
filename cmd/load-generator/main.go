@@ -23,7 +23,7 @@ type Account struct {
 	ID            string    `json:"ID"`
 	UserID        string    `json:"UserID"`
 	Currency      string    `json:"Currency"`
-	CachedBalance int64     `json:"CachedBalance"`
+	CachedBalance int64     `json:"Balance"`
 	Version       int       `json:"Version"`
 	CreatedAt     time.Time `json:"CreatedAt"`
 	UpdatedAt     time.Time `json:"UpdatedAt"`

@@ -7,5 +7,5 @@ import (
 )
 
 type AuthorizePaymentUseCase interface {
-	Execute(ctx context.Context, input *domain.AuthorizePaymentRequest) (*domain.Account, error)
+	Execute(ctx context.Context, input *domain.AuthorizePaymentRequest) (*domain.Payment, error)
 }

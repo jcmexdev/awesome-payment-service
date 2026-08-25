@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jcmexdev/payment-service/internal/domain"
 	"github.com/jcmexdev/payment-service/internal/domain/constants"
 	"github.com/jcmexdev/payment-service/internal/domain/errors"
 	"github.com/jcmexdev/payment-service/internal/domain/ports"
@@ -16,7 +17,7 @@ import (
 )
 
 type PaymentsController interface {
-	CreatePayment(w http.ResponseWriter, r *http.Request)
+	AuthorizePayment(w http.ResponseWriter, r *http.Request)
 }
 
 type PaymentsHandler struct {
@@ -27,8 +28,8 @@ func NewPaymentsHandler(paymentUseCase ports.AuthorizePaymentUseCase) *PaymentsH
 	return &PaymentsHandler{paymentUseCase: paymentUseCase}
 }
 
-func (h PaymentsHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
-	var req dtos.PaymentRequestDTO
+func (h PaymentsHandler) AuthorizePayment(w http.ResponseWriter, r *http.Request) {
+	var req domain.AuthorizePaymentRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		response.SendError(w, r, http.StatusBadRequest, errors.CodeMalformedJSON, nil)
@@ -64,23 +65,22 @@ func (h PaymentsHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		ctx = context.WithValue(ctx, constants.ContextKeySimulateError, true)
 	}
 
-	// Invocar el caso de uso que encapsula la lógica de negocio y su span principal
-	/*_,err = h.paymentUseCase.Execute(ctx, req.AccountID, req.Amount, refID)
+	payment, err := h.paymentUseCase.Execute(ctx, &req)
 	if err != nil {
 		response.HandleError(w, r, err, "ProcessPayment failed")
 		return
 	}
 
-	payment := domain.Payment{
+	/*payment := domain.Payment{
 		ID:        refID,
 		AccountID: req.AccountID,
 		Amount:    req.Amount,
 		Currency:  req.Currency,
 		Status:    "SETTLED",
 		CreatedAt: time.Now().UTC(),
-	}
+	}*/
 
-	dto := dtos.PaymentFromDomain(&payment)
-	slog.InfoContext(ctx, "ProcessPayment successful", "account_id", req.AccountID, "reference_id", refID)
-	response.SendSuccess(w, r, http.StatusAccepted, errors.CodePaymentAccepted, dto)*/
+	dto := dtos.PaymentFromDomain(payment)
+	//slog.InfoContext(ctx, "ProcessPayment successful", "account_id", req.AccountID, "reference_id", refID)
+	response.SendSuccess(w, r, http.StatusAccepted, errors.CodePaymentAccepted, dto)
 }

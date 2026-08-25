@@ -28,7 +28,7 @@ func (m *mockIdempotencyRepo) Save(ctx context.Context, key string, responseCode
 
 type mockPaymentsController struct{}
 
-func (m *mockPaymentsController) CreatePayment(w http.ResponseWriter, r *http.Request) {
+func (m *mockPaymentsController) AuthorizePayment(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	_, _ = w.Write([]byte(`{"status":"created"}`))
 }

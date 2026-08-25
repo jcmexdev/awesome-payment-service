@@ -55,21 +55,21 @@ func PrometheusMetricsMiddleware(next http.Handler) http.Handler {
 		}
 
 		start := time.Now()
-		
+
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
-		
+
 		next.ServeHTTP(sw, r)
-		
+
 		duration := time.Since(start).Seconds()
-		
+
 		path := chi.RouteContext(r.Context()).RoutePattern()
 		if path == "" {
 			path = r.URL.Path
 		}
-		
+
 		method := r.Method
 		statusStr := strconv.Itoa(sw.status)
-		
+
 		HttpRequestsTotal.WithLabelValues(path, method, statusStr).Inc()
 		HttpRequestDuration.WithLabelValues(path, method, statusStr).Observe(duration)
 	})

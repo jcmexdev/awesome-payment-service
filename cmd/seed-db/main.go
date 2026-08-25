@@ -31,13 +31,13 @@ func main() {
 	// 1. Seed a test Account
 	accountID := "test-account-123"
 	account := domain.Account{
-		ID:            accountID,
-		UserID:        "user-example-456",
-		Currency:      "USD",
-		CachedBalance: 10000, // $100.00 USD (in cents)
-		Version:       0,
-		CreatedAt:     time.Now().UTC(),
-		UpdatedAt:     time.Now().UTC(),
+		ID:        accountID,
+		UserID:    "user-example-456",
+		Currency:  "USD",
+		Balance:   10000, // $100.00 USD (in cents)
+		Version:   0,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
 	}
 
 	fmt.Printf("Seeding test account '%s' with $100.00 USD (10000 cents)... ", accountID)
@@ -52,7 +52,7 @@ func main() {
 		fmt.Println("Created!")
 	} else {
 		// Reset balance for fresh testing
-		existing.CachedBalance = 10000
+		existing.Balance = 10000
 		existing.Version = 0
 		db.Save(&existing)
 		// Clean up any ledger entries or idempotency records for fresh testing
@@ -65,7 +65,7 @@ func main() {
 	idempotencyKey := uuid.New().String()
 	fmt.Println("\n================================================================================")
 	fmt.Println("1. INICIAR EL SERVIDOR DE PAGOS:")
-	fmt.Println("   DATABASE_URL=\""+cfg.DatabaseURL+"\" go run cmd/payments-api/main.go")
+	fmt.Println("   DATABASE_URL=\"" + cfg.DatabaseURL + "\" go run cmd/payments-api/main.go")
 	fmt.Println("================================================================================")
 	fmt.Println("2. PROBAR EL FLUJO CON CURL:")
 	fmt.Println()

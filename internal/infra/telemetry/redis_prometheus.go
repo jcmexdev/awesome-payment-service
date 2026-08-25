@@ -65,7 +65,7 @@ func (h *PrometheusRedisHook) ProcessHook(next redis.ProcessHook) redis.ProcessH
 				if boolCmd.Val() {
 					status = "miss" // Key did not exist, lock acquired (idempotency miss)
 				} else {
-					status = "hit"  // Key already existed, lock failed (idempotency hit)
+					status = "hit" // Key already existed, lock failed (idempotency hit)
 				}
 			}
 		}

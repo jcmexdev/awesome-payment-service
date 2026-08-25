@@ -62,12 +62,18 @@ func NewConnection(ctx context.Context, dsn string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
 
-	// 4. Auto-migración con propagación de Contexto
-	if err := db.WithContext(ctx).AutoMigrate(
+	models := []interface{}{
 		&domain.Account{},
 		&domain.LedgerEntry{},
 		&domain.IdempotencyRecord{},
-	); err != nil {
+		&domain.Payment{},
+		&domain.OutboxEvent{},
+	}
+	if err := db.Migrator().DropTable(models...); err != nil {
+		return nil, err
+	}
+
+	if err := db.WithContext(ctx).AutoMigrate(models...); err != nil {
 		_ = sqlDB.Close()
 		return nil, fmt.Errorf("database auto-migration failed: %w", err)
 	}

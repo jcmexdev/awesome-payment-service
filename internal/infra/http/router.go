@@ -84,7 +84,7 @@ func (r router) bindPaymentsRoutes(v1 chi.Router) {
 		panic("health controller is required")
 	}
 
-	v1.With(r.idempotencyMiddleware.WithPrefix("payment").Handler).Post("/payments", r.paymentsController.CreatePayment)
+	v1.With(r.idempotencyMiddleware.WithPrefix("payment").Handler).Post("/payments", r.paymentsController.AuthorizePayment)
 }
 
 func (r router) bindAccountRoutes(v1 chi.Router) {

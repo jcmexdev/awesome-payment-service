@@ -46,11 +46,11 @@ func TestLedgerRepository_ProcessPayment_Success(t *testing.T) {
 	ctx := context.Background()
 
 	account := domain.Account{
-		ID:            uuid.New().String(),
-		UserID:        "user-123",
-		Currency:      "USD",
-		CachedBalance: 10000, // 100.00 USD
-		Version:       0,
+		ID:       uuid.New().String(),
+		UserID:   "user-123",
+		Currency: "USD",
+		Balance:  10000, // 100.00 USD
+		Version:  0,
 	}
 
 	if err := repo.CreateAccount(ctx, &account); err != nil {
@@ -69,8 +69,8 @@ func TestLedgerRepository_ProcessPayment_Success(t *testing.T) {
 		t.Fatalf("GetAccount failed: %v", err)
 	}
 
-	if updatedAccount.CachedBalance != 7000 {
-		t.Errorf("expected balance 7000, got %d", updatedAccount.CachedBalance)
+	if updatedAccount.Balance != 7000 {
+		t.Errorf("expected balance 7000, got %d", updatedAccount.Balance)
 	}
 
 	if updatedAccount.Version != 1 {
@@ -100,11 +100,11 @@ func TestLedgerRepository_ProcessPayment_InsufficientBalance(t *testing.T) {
 	ctx := context.Background()
 
 	account := domain.Account{
-		ID:            uuid.New().String(),
-		UserID:        "user-123",
-		Currency:      "USD",
-		CachedBalance: 1000, // 10.00 USD
-		Version:       0,
+		ID:       uuid.New().String(),
+		UserID:   "user-123",
+		Currency: "USD",
+		Balance:  1000, // 10.00 USD
+		Version:  0,
 	}
 
 	if err := repo.CreateAccount(ctx, &account); err != nil {
@@ -123,8 +123,8 @@ func TestLedgerRepository_ProcessPayment_InsufficientBalance(t *testing.T) {
 		t.Fatalf("GetAccount failed: %v", err)
 	}
 
-	if updatedAccount.CachedBalance != 1000 {
-		t.Errorf("expected balance to remain 1000, got %d", updatedAccount.CachedBalance)
+	if updatedAccount.Balance != 1000 {
+		t.Errorf("expected balance to remain 1000, got %d", updatedAccount.Balance)
 	}
 
 	var count int64
@@ -142,11 +142,11 @@ func TestLedgerRepository_ProcessPayment_DbIdempotency(t *testing.T) {
 	ctx := context.Background()
 
 	account := domain.Account{
-		ID:            uuid.New().String(),
-		UserID:        "user-123",
-		Currency:      "USD",
-		CachedBalance: 10000, // 100.00 USD
-		Version:       0,
+		ID:       uuid.New().String(),
+		UserID:   "user-123",
+		Currency: "USD",
+		Balance:  10000, // 100.00 USD
+		Version:  0,
 	}
 
 	if err := repo.CreateAccount(ctx, &account); err != nil {
@@ -171,8 +171,8 @@ func TestLedgerRepository_ProcessPayment_DbIdempotency(t *testing.T) {
 		t.Fatalf("GetAccount failed: %v", err)
 	}
 
-	if updatedAccount.CachedBalance != 8000 {
-		t.Errorf("expected balance to be 8000, got %d", updatedAccount.CachedBalance)
+	if updatedAccount.Balance != 8000 {
+		t.Errorf("expected balance to be 8000, got %d", updatedAccount.Balance)
 	}
 }
 
@@ -184,11 +184,11 @@ func TestLedgerRepository_ProcessPayment_Concurrency(t *testing.T) {
 	ctx := context.Background()
 
 	account := domain.Account{
-		ID:            uuid.New().String(),
-		UserID:        "user-123",
-		Currency:      "USD",
-		CachedBalance: 10000, // 100.00 USD
-		Version:       0,
+		ID:       uuid.New().String(),
+		UserID:   "user-123",
+		Currency: "USD",
+		Balance:  10000, // 100.00 USD
+		Version:  0,
 	}
 
 	if err := repo.CreateAccount(ctx, &account); err != nil {
@@ -225,8 +225,8 @@ func TestLedgerRepository_ProcessPayment_Concurrency(t *testing.T) {
 		t.Fatalf("GetAccount failed: %v", err)
 	}
 
-	if updatedAccount.CachedBalance != 5000 {
-		t.Errorf("expected balance 5000, got %d", updatedAccount.CachedBalance)
+	if updatedAccount.Balance != 5000 {
+		t.Errorf("expected balance 5000, got %d", updatedAccount.Balance)
 	}
 
 	if updatedAccount.Version != 5 {
