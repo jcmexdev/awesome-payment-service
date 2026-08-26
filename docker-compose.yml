@@ -16,8 +16,8 @@ services:
   payment-service:
     build:
       context: .
-      dockerfile: build/payments-api/Dockerfile
-    container_name: payment_service
+      dockerfile: build/payments_ingestor/Dockerfile
+    container_name: payments_ingestor
     volumes:
       - ./data:/app/data
     env_file:
@@ -25,7 +25,7 @@ services:
     environment:
       - REDIS_ADDR=redis:6379
       - OTEL_COLLECTOR_ADDR=otel-collector:4317
-      - OTEL_SERVICE_NAME=payment_service
+      - OTEL_SERVICE_NAME=payments_ingestor
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
     depends_on:
       redis:

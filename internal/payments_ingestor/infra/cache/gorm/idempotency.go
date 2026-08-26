@@ -1,0 +1,149 @@
+package gorm
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"time"
+
+	domain2 "github.com/jcmexdev/payment-service/internal/payments_ingestor/domain"
+	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/constants"
+	"github.com/jcmexdev/payment-service/internal/payments_ingestor/infra/telemetry"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"gorm.io/gorm/logger"
+	"gorm.io/plugin/opentelemetry/tracing"
+)
+
+type IdempotencyCache struct {
+	db *gorm.DB
+}
+
+func NewConnection(ctx context.Context, dsn string) (*gorm.DB, error) {
+	if dsn == "" {
+		return nil, errors.New("database dsn required")
+	}
+
+	gormLogger := telemetry.NewGormSlogLogger(slog.Default(), 200*time.Millisecond)
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: gormLogger.LogMode(logger.Silent),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to open postgres database: %w", err)
+	}
+
+	// 1. Registro del Plugin de OpenTelemetry para GORM
+	if err := db.Use(tracing.NewPlugin(
+		tracing.WithDBSystem("payments_db"),
+	)); err != nil {
+		return nil, fmt.Errorf("failed to register opentelemetry plugin: %w", err)
+	}
+
+	// 2. Configuración del Pool de Conexiones nativo (*sql.DB)
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
+	}
+
+	// Configuración optimizada para PostgreSQL en producción
+	sqlDB.SetMaxOpenConns(25)                 // Límite de conexiones abiertas
+	sqlDB.SetMaxIdleConns(10)                 // Conexiones inactivas en reserva
+	sqlDB.SetConnMaxLifetime(5 * time.Minute) // Reutilización de sockets
+
+	// 3. Health Check (Ping) con Timeout
+	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	if err := sqlDB.PingContext(pingCtx); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("database ping failed: %w", err)
+	}
+
+	models := []interface{}{
+		&domain2.Account{},
+		&domain2.LedgerEntry{},
+		&domain2.IdempotencyRecord{},
+		&domain2.Payment{},
+		&domain2.OutboxEvent{},
+	}
+	if err := db.Migrator().DropTable(models...); err != nil {
+		return nil, err
+	}
+
+	if err := db.WithContext(ctx).AutoMigrate(models...); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("database auto-migration failed: %w", err)
+	}
+
+	return db, nil
+}
+
+func NewIdempotencyCache(ctx context.Context, db *gorm.DB) (*IdempotencyCache, error) {
+	return &IdempotencyCache{db: db}, nil
+}
+
+func (i IdempotencyCache) Lock(ctx context.Context, key string, ttl time.Duration) (bool, *domain2.IdempotencyRecord, error) {
+	now := time.Now().UTC()
+	expiresAt := now.Add(ttl)
+	reqID, _ := ctx.Value(constants.ContextKeyRequestID).(string)
+
+	// Clean up expired records
+	_ = i.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&domain2.IdempotencyRecord{}).Error
+
+	rec := domain2.IdempotencyRecord{
+		Key:       key,
+		Status:    domain2.IdempotencyStatusProcessing,
+		ExpiresAt: expiresAt,
+		RequestID: reqID,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	// Try to create the record (acting as lock acquisition)
+	err := i.db.WithContext(ctx).Create(&rec).Error
+	if err == nil {
+		return true, nil, nil
+	}
+
+	// If creation failed, select the existing record to inspect its status
+	var existing domain2.IdempotencyRecord
+	if err := i.db.WithContext(ctx).Where("key = ?", key).First(&existing).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil, nil
+		}
+		return false, nil, fmt.Errorf("failed to query existing idempotency record: %w", err)
+	}
+
+	return false, &existing, nil
+}
+
+func (i IdempotencyCache) Save(ctx context.Context, key string, statusCode int, body []byte, ttl time.Duration) error {
+	now := time.Now().UTC()
+	expiresAt := now.Add(ttl)
+
+	reqID, _ := ctx.Value(constants.ContextKeyRequestID).(string)
+
+	rec := domain2.IdempotencyRecord{
+		Key:          key,
+		Status:       domain2.IdempotencyStatusCompleted,
+		ResponseCode: statusCode,
+		ResponseBody: body,
+		RequestID:    reqID,
+		ExpiresAt:    expiresAt,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+
+	err := i.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "key"}},
+		DoUpdates: clause.AssignmentColumns([]string{"status", "response_code", "response_body", "expires_at", "updated_at", "request_id"}),
+	}).Create(&rec).Error
+	if err != nil {
+		return fmt.Errorf("database upsert failed: %w", err)
+	}
+
+	return nil
+}
