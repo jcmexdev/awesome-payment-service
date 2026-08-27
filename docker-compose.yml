@@ -35,6 +35,21 @@ services:
     networks:
       - payment_network
 
+  outbox-relayer:
+    build:
+      context: .
+      dockerfile: ./build/outbox_relayer/Dockerfile
+    container_name: outbox_relayer
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
+      - BATCH_SIZE=100
+      - POLL_INTERVAL_MS=1000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - payment_network
+
   redis:
     image: redis:7-alpine
     container_name: payment_redis
