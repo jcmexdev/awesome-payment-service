@@ -1,9 +1,16 @@
-package domain
+package payment
 
 import (
 	"time"
 
 	"gorm.io/datatypes"
+)
+
+type OutboxStatus string
+
+const (
+	OutboxStatusPending   OutboxStatus = "PENDING"
+	OutboxStatusProcessed OutboxStatus = "PROCESSED"
 )
 
 type OutboxEvent struct {
@@ -12,9 +19,22 @@ type OutboxEvent struct {
 	AggregateID   string         `gorm:"type:varchar(64);not null"`
 	EventType     string         `gorm:"eventType:varchar(50);not null"`
 	Payload       datatypes.JSON `gorm:"type:jsonb;not null"`
-	Status        string         `gorm:"type:varchar(20);not null;default:'PENDING';index:idx_outbox_pending,priority:2"`
+	Status        OutboxStatus   `gorm:"type:varchar(20);not null;default:'PENDING';index:idx_outbox_pending,priority:2"`
 	CreatedAt     time.Time      `gorm:"not null;autoCreateTime;index:idx_outbox_pending,priority:3"`
 	ProcessedAt   *time.Time     `gorm:"type:timestamptz"`
+}
+
+func NewOutboxEvent(ID string, aggregateType string, aggregateID string, eventType string, payload datatypes.JSON, status OutboxStatus) *OutboxEvent {
+	return &OutboxEvent{
+		ID:            ID,
+		AggregateType: aggregateType,
+		AggregateID:   aggregateID,
+		EventType:     eventType,
+		Payload:       payload,
+		Status:        status,
+		CreatedAt:     time.Now().UTC(),
+	}
+
 }
 
 func (OutboxEvent) TableName() string {

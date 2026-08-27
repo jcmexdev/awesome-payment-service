@@ -26,22 +26,3 @@ func (a *Account) Validate() error {
 	}
 	return nil
 }
-
-func (le *LedgerEntry) Validate() error {
-	if le.ID == "" {
-		return errors.New("ledger entry ID is required")
-	}
-	if le.AccountID == "" {
-		return errors.New("ledger entry account ID is required")
-	}
-	if le.Amount == 0 {
-		return errors.New("ledger entry amount cannot be zero")
-	}
-	if le.Type == "" {
-		return errors.New("ledger entry type is required")
-	}
-	if le.RequestId == "" {
-		return errors.New("ledger entry request ID is required")
-	}
-	return nil
-}

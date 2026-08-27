@@ -3,38 +3,31 @@ package usecase
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/google/uuid"
-	domain2 "github.com/jcmexdev/payment-service/internal/payments_ingestor/domain"
+	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain"
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/constants"
-	errors2 "github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/errors"
-	ports2 "github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/ports"
+	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/errors"
+	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/ports"
+	"github.com/jcmexdev/payment-service/pkg/domain/payment"
 )
 
 type AuthorizePaymentUseCase struct {
-	paymentsRepo ports2.PaymentsRepository
-	outboxRepo   ports2.OutboxRepository
-	uow          ports2.UnitOfWork
+	paymentsRepo ports.PaymentsRepository
+	outboxRepo   ports.OutboxRepository
+	uow          ports.UnitOfWork
 }
 
-func NewAuthorizePaymentUseCase(paymentsRepo ports2.PaymentsRepository, outboxRepo ports2.OutboxRepository, uow ports2.UnitOfWork) *AuthorizePaymentUseCase {
+func NewAuthorizePaymentUseCase(paymentsRepo ports.PaymentsRepository, outboxRepo ports.OutboxRepository, uow ports.UnitOfWork) *AuthorizePaymentUseCase {
 	return &AuthorizePaymentUseCase{paymentsRepo: paymentsRepo, outboxRepo: outboxRepo, uow: uow}
 }
 
-func (a AuthorizePaymentUseCase) Execute(ctx context.Context, input *domain2.AuthorizePaymentRequest) (*domain2.Payment, error) {
-	payment := &domain2.Payment{
-		ID:        uuid.NewString(),
-		AccountID: input.AccountID,
-		Amount:    input.Amount,
-		Currency:  input.Currency,
-		Status:    string(constants.PaymentCreated),
-		CreatedAt: time.Now(),
-	}
+func (a AuthorizePaymentUseCase) Execute(ctx context.Context, in *domain.AuthorizePaymentRequest) (*payment.Payment, error) {
+	newPayment, err := payment.NewPayment(uuid.NewString(), in.Amount, in.Currency, in.AccountID)
 
-	payloadBytes, err := json.Marshal(payment)
+	payloadBytes, err := json.Marshal(newPayment)
 	if err != nil {
-		return nil, errors2.NewAppError(
+		return nil, errors.NewAppError(
 			constants.TypeInternal,
 			constants.CodeMalformedJSON,
 			constants.GetMessage(constants.CodeMalformedJSON),
@@ -42,18 +35,15 @@ func (a AuthorizePaymentUseCase) Execute(ctx context.Context, input *domain2.Aut
 		)
 	}
 
-	outboxEvent := &domain2.OutboxEvent{
-		ID:            uuid.NewString(),
-		AggregateType: "PAYMENT",
-		AggregateID:   payment.ID,
-		EventType:     "PAYMENT_CREATED",
-		Payload:       payloadBytes,
-		Status:        "PENDING",
-		CreatedAt:     payment.CreatedAt,
-	}
+	outboxEvent := payment.NewOutboxEvent(uuid.NewString(),
+		"PAYMENT",
+		newPayment.ID,
+		"payment.created",
+		payloadBytes,
+		payment.OutboxStatusPending)
 
 	err = a.uow.Do(ctx, func(ctx context.Context) error {
-		err := a.paymentsRepo.CreatePayment(ctx, payment)
+		err := a.paymentsRepo.CreatePayment(ctx, newPayment)
 		if err != nil {
 			return err
 		}
@@ -69,7 +59,7 @@ func (a AuthorizePaymentUseCase) Execute(ctx context.Context, input *domain2.Aut
 	if err != nil {
 		return nil, err
 	}
-	return payment, nil
+	return newPayment, nil
 }
 
 /*func NewPaymentUseCase(ledgerRepo ports.LedgerRepository) *AuthorizePaymentUseCase {

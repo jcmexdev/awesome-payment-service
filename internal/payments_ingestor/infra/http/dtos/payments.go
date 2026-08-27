@@ -3,7 +3,7 @@ package dtos
 import (
 	"time"
 
-	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain"
+	"github.com/jcmexdev/payment-service/pkg/domain/payment"
 )
 
 type PaymentRequestDTO struct {
@@ -20,12 +20,12 @@ type PaymentResponseDTO struct {
 	CreatedAt string `json:"created_at"`
 }
 
-func PaymentFromDomain(payment *domain.Payment) PaymentResponseDTO {
+func PaymentFromDomain(p *payment.Payment) PaymentResponseDTO {
 	return PaymentResponseDTO{
-		PaymentID: payment.ID,
-		Amount:    payment.Amount,
-		Currency:  payment.Currency,
-		Status:    payment.Status,
-		CreatedAt: payment.CreatedAt.UTC().Format(time.RFC3339),
+		PaymentID: p.ID,
+		Amount:    p.Amount,
+		Currency:  p.Currency,
+		Status:    string(payment.StatusCreated),
+		CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }

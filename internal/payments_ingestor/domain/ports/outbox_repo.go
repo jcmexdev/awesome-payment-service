@@ -3,9 +3,9 @@ package ports
 import (
 	"context"
 
-	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain"
+	"github.com/jcmexdev/payment-service/pkg/domain/payment"
 )
 
 type OutboxRepository interface {
-	Create(ctx context.Context, event *domain.OutboxEvent) error
+	Create(ctx context.Context, event *payment.OutboxEvent) error
 }

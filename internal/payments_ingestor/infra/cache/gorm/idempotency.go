@@ -10,6 +10,7 @@ import (
 	domain2 "github.com/jcmexdev/payment-service/internal/payments_ingestor/domain"
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/constants"
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/infra/telemetry"
+	"github.com/jcmexdev/payment-service/pkg/domain/payment"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -64,10 +65,9 @@ func NewConnection(ctx context.Context, dsn string) (*gorm.DB, error) {
 
 	models := []interface{}{
 		&domain2.Account{},
-		&domain2.LedgerEntry{},
 		&domain2.IdempotencyRecord{},
-		&domain2.Payment{},
-		&domain2.OutboxEvent{},
+		&payment.Payment{},
+		&payment.OutboxEvent{},
 	}
 	if err := db.Migrator().DropTable(models...); err != nil {
 		return nil, err
