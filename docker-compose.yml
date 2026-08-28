@@ -92,6 +92,8 @@ services:
         condition: service_healthy
       floci:
         condition: service_healthy
+      sqs-init:
+        condition: service_completed_successfully
     networks:
       - payment_network
 
