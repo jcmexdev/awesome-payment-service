@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/jcmexdev/payment-service/internal/outbox_relayer/domain"
+	"github.com/jcmexdev/payment-service/pkg/domain/payment"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -26,15 +26,15 @@ func getTx(ctx context.Context, defaultDB *gorm.DB) *gorm.DB {
 }
 
 // FetchPendingEvents: Obtiene eventos en PENDING bloqueando filas concurrentes
-func (r *OutboxRepository) FetchPendingEvents(ctx context.Context, limit int) ([]domain.OutboxEvent, error) {
-	var events []domain.OutboxEvent
+func (r *OutboxRepository) FetchPendingEvents(ctx context.Context, limit int) ([]payment.OutboxEvent, error) {
+	var events []payment.OutboxEvent
 
 	err := r.db.WithContext(ctx).
 		Clauses(clause.Locking{
 			Strength: "UPDATE",
 			Options:  "SKIP LOCKED",
 		}).
-		Where("status = ?", string(domain.OutboxStatusPending)).
+		Where("status = ?", string(payment.OutboxStatusPending)).
 		Order("created_at ASC").
 		Limit(limit).
 		Find(&events).Error
@@ -42,22 +42,20 @@ func (r *OutboxRepository) FetchPendingEvents(ctx context.Context, limit int) ([
 	return events, err
 }
 
-// MarkAsProcessed: Marca el evento como PROCESSED tras publicarlo exitosamente
 func (r *OutboxRepository) MarkAsProcessed(ctx context.Context, eventID string) error {
 	now := time.Now().UTC()
 	return r.db.WithContext(ctx).
-		Model(&domain.OutboxEvent{}).
+		Model(&payment.OutboxEvent{}).
 		Where("id = ?", eventID).
 		Updates(map[string]interface{}{
-			"status":       string(domain.OutboxStatusProcessed),
+			"status":       string(payment.OutboxStatusProcessed),
 			"processed_at": &now,
 		}).Error
 }
 
-// MarkAsFailed: Si ocurre un error irrecuperable
 func (r *OutboxRepository) MarkAsFailed(ctx context.Context, eventID string) error {
 	return r.db.WithContext(ctx).
-		Model(&domain.OutboxEvent{}).
+		Model(&payment.OutboxEvent{}).
 		Where("id = ?", eventID).
-		Update("status", string(domain.OutboxStatusFailed)).Error
+		Update("status", string(payment.OutboxStatusFailed)).Error
 }

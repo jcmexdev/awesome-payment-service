@@ -2,25 +2,58 @@ package main
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/jcmexdev/payment-service/internal/outbox_relayer/config"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	appConfig "github.com/jcmexdev/payment-service/internal/outbox_relayer/config"
 	"github.com/jcmexdev/payment-service/internal/outbox_relayer/infrastructure"
 	"github.com/jcmexdev/payment-service/internal/outbox_relayer/infrastructure/messaging"
 	"github.com/jcmexdev/payment-service/internal/outbox_relayer/infrastructure/persistence/postgres"
 )
 
 func main() {
-	cfg := config.LoadConfig()
+	ctx := context.Background()
+	cfg := appConfig.LoadConfig()
+
+	endpointURL := os.Getenv("SQS_ENDPOINT") // http://floci:4566
+	region := os.Getenv("AWS_REGION")        // us-east-1
+	queueName := os.Getenv("SQS_QUEUE_NAME") // us-east-1
+
+	// Resolver personalizado para redirigir AWS SQS hacia el contenedor de Floci
+	awsConfig, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(region),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider("TEST", "TEST", "")))
+
+	if err != nil {
+		log.Fatalf("failed to load AWS configuration: %v", err)
+	}
 
 	slog.Info("Iniciando servicio Outbox Relayer",
 		"env", cfg.Environment,
 		"db_url", cfg.DBurl,
 	)
+
+	sqsClient := sqs.NewFromConfig(awsConfig, func(o *sqs.Options) {
+		if endpointURL != "" {
+			o.BaseEndpoint = aws.String(endpointURL) // Reemplazo oficial de AWS SDK v2
+		}
+	})
+
+	log.Println("Cliente SQS listo usando BaseEndpoint (compatible con Floci)")
+	_ = sqsClient
+
+	sqsPublisher, err := messaging.NewSQSPublisher(ctx, sqsClient, queueName)
+	if err != nil {
+		log.Fatalf("failed to create sqs publisher: %v", err)
+	}
 
 	db, err := postgres.NewPostgresDB(cfg.DBurl)
 	if err != nil {
@@ -29,11 +62,11 @@ func main() {
 	}
 
 	outboxRepo := postgres.NewOutboxRepository(db)
-	publisher := messaging.NewStdoutPublisher()
+	//publisher := messaging.NewStdoutPublisher()
 
 	relayer := infrastructure.NewOutboxRelayer(
 		outboxRepo,
-		publisher,
+		sqsPublisher,
 		cfg.BatchSize,
 		cfg.PollInterval,
 	)

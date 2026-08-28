@@ -12,6 +12,44 @@ services:
       - otel-collector
     networks:
       - payment_network
+  floci:
+    container_name: floci_aws_emulator
+    image: floci/floci:latest
+    ports:
+      - "4566:4566"
+    environment:
+      - FLOCI_HOSTNAME=floci
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:4566/_floci/health" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - payment_network
+
+  sqs-init:
+    image: amazon/aws-cli:latest
+    container_name: sqs_init
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+    entrypoint: /bin/sh
+    command: >
+      -c "
+      echo 'Esperando a que Floci responda...';
+      until aws --endpoint-url=http://floci:4566 sqs list-queues > /dev/null 2>&1; do
+        sleep 1;
+      done;
+      echo 'Floci listo. Creando cola payments-queue...';
+      aws --endpoint-url=http://floci:4566 sqs create-queue --queue-name payments-queue;
+      echo 'Cola creada exitosamente.';
+      "
+    depends_on:
+      floci:
+        condition: service_healthy
+    networks:
+      - payment_network
 
   payment-service:
     build:
@@ -28,6 +66,8 @@ services:
       - OTEL_SERVICE_NAME=payments_ingestor
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
     depends_on:
+      floci:
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:
@@ -44,8 +84,13 @@ services:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
       - BATCH_SIZE=100
       - POLL_INTERVAL_MS=1000
+      - AWS_REGION=us-east-1
+      - SQS_ENDPOINT=http://floci:4566
+      - SQS_QUEUE_NAME=payments-queue
     depends_on:
       postgres:
+        condition: service_healthy
+      floci:
         condition: service_healthy
     networks:
       - payment_network

@@ -9,6 +9,11 @@ import (
 
 type StdoutPublisher struct{}
 
+func (p *StdoutPublisher) PublishV1(ctx context.Context, msg ports.Message) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewStdoutPublisher() ports.MessagePublisher {
 	return &StdoutPublisher{}
 }

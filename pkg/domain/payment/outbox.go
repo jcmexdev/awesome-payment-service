@@ -11,6 +11,7 @@ type OutboxStatus string
 const (
 	OutboxStatusPending   OutboxStatus = "PENDING"
 	OutboxStatusProcessed OutboxStatus = "PROCESSED"
+	OutboxStatusFailed    OutboxStatus = "FAILED"
 )
 
 type OutboxEvent struct {

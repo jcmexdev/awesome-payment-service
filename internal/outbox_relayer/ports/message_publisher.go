@@ -3,6 +3,14 @@ package ports
 
 import "context"
 
+type Message struct {
+	Destination string
+	Key         string
+	Payload     []byte
+	Headers     map[string]string
+}
+
 type MessagePublisher interface {
 	Publish(ctx context.Context, topic string, key string, payload []byte) error
+	PublishV1(ctx context.Context, msg Message) error
 }

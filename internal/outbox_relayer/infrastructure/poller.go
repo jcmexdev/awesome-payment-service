@@ -59,14 +59,17 @@ func (r *OutboxRelayer) processPendingEvents(ctx context.Context) {
 	}
 
 	for _, event := range events {
-		err := r.publisher.Publish(ctx, event.Type, event.AggregateID, []byte(event.Payload))
+		msg := ports.Message{
+			Payload: []byte(event.Payload),
+		}
+		err := r.publisher.PublishV1(ctx, msg)
+		//err := r.publisher.Publish(ctx, event.EventType, event.AggregateID, []byte(event.Payload))
 		if err != nil {
 			log.Printf("[OutboxRelayer] Error enviando evento %s: %v\n", event.ID, err)
 			_ = r.outboxRepo.MarkAsFailed(ctx, event.ID)
 			continue
 		}
 
-		// Marcar en DB como PROCESSED
 		if err := r.outboxRepo.MarkAsProcessed(ctx, event.ID); err != nil {
 			log.Printf("[OutboxRelayer] Error actualizando estado %s: %v\n", event.ID, err)
 		}

@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	domain2 "github.com/jcmexdev/payment-service/internal/payments_ingestor/domain"
+	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain"
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/constants"
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/infra/telemetry"
 	"github.com/jcmexdev/payment-service/pkg/domain/payment"
@@ -64,14 +64,14 @@ func NewConnection(ctx context.Context, dsn string) (*gorm.DB, error) {
 	}
 
 	models := []interface{}{
-		&domain2.Account{},
-		&domain2.IdempotencyRecord{},
+		&domain.Account{},
+		&domain.IdempotencyRecord{},
 		&payment.Payment{},
 		&payment.OutboxEvent{},
 	}
-	if err := db.Migrator().DropTable(models...); err != nil {
+	/*if err := db.Migrator().DropTable(models...); err != nil {
 		return nil, err
-	}
+	}*/
 
 	if err := db.WithContext(ctx).AutoMigrate(models...); err != nil {
 		_ = sqlDB.Close()
@@ -85,17 +85,17 @@ func NewIdempotencyCache(ctx context.Context, db *gorm.DB) (*IdempotencyCache, e
 	return &IdempotencyCache{db: db}, nil
 }
 
-func (i IdempotencyCache) Lock(ctx context.Context, key string, ttl time.Duration) (bool, *domain2.IdempotencyRecord, error) {
+func (i IdempotencyCache) Lock(ctx context.Context, key string, ttl time.Duration) (bool, *domain.IdempotencyRecord, error) {
 	now := time.Now().UTC()
 	expiresAt := now.Add(ttl)
 	reqID, _ := ctx.Value(constants.ContextKeyRequestID).(string)
 
 	// Clean up expired records
-	_ = i.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&domain2.IdempotencyRecord{}).Error
+	_ = i.db.WithContext(ctx).Where("expires_at < ?", now).Delete(&domain.IdempotencyRecord{}).Error
 
-	rec := domain2.IdempotencyRecord{
+	rec := domain.IdempotencyRecord{
 		Key:       key,
-		Status:    domain2.IdempotencyStatusProcessing,
+		Status:    domain.IdempotencyStatusProcessing,
 		ExpiresAt: expiresAt,
 		RequestID: reqID,
 		CreatedAt: now,
@@ -109,7 +109,7 @@ func (i IdempotencyCache) Lock(ctx context.Context, key string, ttl time.Duratio
 	}
 
 	// If creation failed, select the existing record to inspect its status
-	var existing domain2.IdempotencyRecord
+	var existing domain.IdempotencyRecord
 	if err := i.db.WithContext(ctx).Where("key = ?", key).First(&existing).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil, nil
@@ -126,9 +126,9 @@ func (i IdempotencyCache) Save(ctx context.Context, key string, statusCode int, 
 
 	reqID, _ := ctx.Value(constants.ContextKeyRequestID).(string)
 
-	rec := domain2.IdempotencyRecord{
+	rec := domain.IdempotencyRecord{
 		Key:          key,
-		Status:       domain2.IdempotencyStatusCompleted,
+		Status:       domain.IdempotencyStatusCompleted,
 		ResponseCode: statusCode,
 		ResponseBody: body,
 		RequestID:    reqID,
