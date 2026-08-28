@@ -62,8 +62,8 @@ func (r *OutboxRelayer) processPendingEvents(ctx context.Context) {
 		msg := ports.Message{
 			Payload: []byte(event.Payload),
 		}
-		err := r.publisher.PublishV1(ctx, msg)
-		//err := r.publisher.Publish(ctx, event.EventType, event.AggregateID, []byte(event.Payload))
+		err := r.publisher.Publish(ctx, msg)
+
 		if err != nil {
 			log.Printf("[OutboxRelayer] Error enviando evento %s: %v\n", event.ID, err)
 			_ = r.outboxRepo.MarkAsFailed(ctx, event.ID)

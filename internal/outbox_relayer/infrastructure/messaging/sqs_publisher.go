@@ -14,7 +14,6 @@ type SQSPublisher struct {
 	queueURL string
 }
 
-// Ensure interface implementation compile check
 var _ ports.MessagePublisher = (*SQSPublisher)(nil)
 
 func NewSQSPublisher(ctx context.Context, client *sqs.Client, queueName string) (*SQSPublisher, error) {
@@ -28,21 +27,7 @@ func NewSQSPublisher(ctx context.Context, client *sqs.Client, queueName string) 
 	return &SQSPublisher{client: client, queueURL: *result.QueueUrl}, nil
 }
 
-func (s *SQSPublisher) Publish(ctx context.Context, topic string, key string, payload []byte) error {
-	input := &sqs.SendMessageInput{
-		QueueUrl:    aws.String(s.queueURL),
-		MessageBody: aws.String(string(payload)),
-	}
-
-	_, err := s.client.SendMessage(ctx, input)
-	if err != nil {
-		return fmt.Errorf("error publicando mensaje en SQS (%s): %w", topic, err)
-	}
-	fmt.Println("Successfully published a message")
-	return nil
-}
-
-func (s *SQSPublisher) PublishV1(ctx context.Context, msg ports.Message) error {
+func (s *SQSPublisher) Publish(ctx context.Context, msg ports.Message) error {
 	input := &sqs.SendMessageInput{
 		QueueUrl:    aws.String(s.queueURL),
 		MessageBody: aws.String(string(msg.Payload)),

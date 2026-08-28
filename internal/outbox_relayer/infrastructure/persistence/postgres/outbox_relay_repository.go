@@ -17,14 +17,6 @@ func NewOutboxRepository(db *gorm.DB) *OutboxRepository {
 	return &OutboxRepository{db: db}
 }
 
-// Helper para extraer la transacción activa si viene dentro del contexto del UnitOfWork
-func getTx(ctx context.Context, defaultDB *gorm.DB) *gorm.DB {
-	if tx, ok := ctx.Value("tx_key").(*gorm.DB); ok {
-		return tx
-	}
-	return defaultDB
-}
-
 // FetchPendingEvents: Obtiene eventos en PENDING bloqueando filas concurrentes
 func (r *OutboxRepository) FetchPendingEvents(ctx context.Context, limit int) ([]payment.OutboxEvent, error) {
 	var events []payment.OutboxEvent

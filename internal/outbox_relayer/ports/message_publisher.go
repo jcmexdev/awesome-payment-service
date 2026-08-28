@@ -11,6 +11,5 @@ type Message struct {
 }
 
 type MessagePublisher interface {
-	Publish(ctx context.Context, topic string, key string, payload []byte) error
-	PublishV1(ctx context.Context, msg Message) error
+	Publish(ctx context.Context, msg Message) error
 }
