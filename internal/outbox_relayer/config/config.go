@@ -7,19 +7,23 @@ import (
 )
 
 type Config struct {
-	Environment  string
-	DBurl        string
-	PollInterval time.Duration
-	BatchSize    int
+	Environment       string
+	DBurl             string
+	PollInterval      time.Duration
+	BatchSize         int
+	OtelCollectorAddr string
+	OtelServiceName   string
 }
 
 // LoadConfig lee exclusivamente las variables de entorno inyectadas en el SO (por Docker Compose)
 func LoadConfig() *Config {
 	return &Config{
-		Environment:  getEnv("APP_ENV", "development"),
-		DBurl:        getEnv("DATABASE_URL", "localhost"),
-		PollInterval: time.Duration(getEnvAsInt("POLL_INTERVAL_MS", 1000)) * time.Millisecond,
-		BatchSize:    getEnvAsInt("BATCH_SIZE", 100),
+		Environment:       getEnv("APP_ENV", "development"),
+		DBurl:             getEnv("DATABASE_URL", "localhost"),
+		PollInterval:      time.Duration(getEnvAsInt("POLL_INTERVAL_MS", 1000)) * time.Millisecond,
+		BatchSize:         getEnvAsInt("BATCH_SIZE", 100),
+		OtelCollectorAddr: getEnv("OTEL_COLLECTOR_ADDR", ""),
+		OtelServiceName:   getEnv("OTEL_SERVICE_NAME", "outbox_relayer"),
 	}
 }
 

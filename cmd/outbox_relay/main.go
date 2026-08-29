@@ -17,11 +17,27 @@ import (
 	"github.com/jcmexdev/payment-service/internal/outbox_relayer/infrastructure"
 	"github.com/jcmexdev/payment-service/internal/outbox_relayer/infrastructure/messaging"
 	"github.com/jcmexdev/payment-service/internal/outbox_relayer/infrastructure/persistence/postgres"
+	"github.com/jcmexdev/payment-service/pkg/telemetry"
 )
 
 func main() {
 	ctx := context.Background()
 	cfg := appConfig.LoadConfig()
+
+	// Initialize OpenTelemetry if configured
+	if cfg.OtelCollectorAddr != "" {
+		shutdownTelemetry, err := telemetry.InitTracer(ctx, cfg.OtelServiceName, cfg.OtelCollectorAddr)
+		if err != nil {
+			slog.Error("Failed to initialize OpenTelemetry in Outbox Relayer", "error", err)
+		} else {
+			defer func() {
+				shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_ = shutdownTelemetry(shutdownCtx)
+			}()
+			slog.Info("OpenTelemetry initialized", "collector", cfg.OtelCollectorAddr, "service", cfg.OtelServiceName)
+		}
+	}
 
 	endpointURL := os.Getenv("SQS_ENDPOINT") // http://floci:4566
 	region := os.Getenv("AWS_REGION")        // us-east-1

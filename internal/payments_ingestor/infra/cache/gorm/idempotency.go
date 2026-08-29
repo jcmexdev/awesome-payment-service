@@ -69,9 +69,9 @@ func NewConnection(ctx context.Context, dsn string) (*gorm.DB, error) {
 		&payment.Payment{},
 		&payment.OutboxEvent{},
 	}
-	/*if err := db.Migrator().DropTable(models...); err != nil {
+	if err := db.Migrator().DropTable(models...); err != nil {
 		return nil, err
-	}*/
+	}
 
 	if err := db.WithContext(ctx).AutoMigrate(models...); err != nil {
 		_ = sqlDB.Close()

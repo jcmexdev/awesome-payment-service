@@ -2,10 +2,16 @@ package infrastructure
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"time"
 
 	"github.com/jcmexdev/payment-service/internal/outbox_relayer/ports"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type OutboxRelayer struct {
@@ -58,20 +64,59 @@ func (r *OutboxRelayer) processPendingEvents(ctx context.Context) {
 		return
 	}
 
-	for _, event := range events {
-		msg := ports.Message{
-			Payload: []byte(event.Payload),
-		}
-		err := r.publisher.Publish(ctx, msg)
+	tr := otel.Tracer("outbox_relayer")
 
+	for _, event := range events {
+		// 1. Extraer y reconstruir el contexto distribuido de OTel desde TraceContext
+		eventCtx := ctx
+		carrier := propagation.MapCarrier{}
+		if len(event.TraceContext) > 0 {
+			if err := json.Unmarshal(event.TraceContext, &carrier); err == nil {
+				eventCtx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+			}
+		}
+
+		// 2. Iniciar Child Span vinculado al TraceID original del Ingestor
+		eventCtx, span := tr.Start(eventCtx, "outbox_relayer.publish_event",
+			trace.WithSpanKind(trace.SpanKindProducer),
+			trace.WithAttributes(
+				attribute.String("messaging.system", "sqs"),
+				attribute.String("messaging.destination", "payments-queue"),
+				attribute.String("messaging.message_id", event.ID),
+				attribute.String("aggregate.type", event.AggregateType),
+				attribute.String("aggregate.id", event.AggregateID),
+				attribute.String("event.type", event.EventType),
+			),
+		)
+
+		// 3. Inyectar contexto activo en las cabeceras del mensaje hacia el Broker downstream
+		outCarrier := propagation.MapCarrier{}
+		otel.GetTextMapPropagator().Inject(eventCtx, outCarrier)
+
+		msg := ports.Message{
+			Destination: "payments-queue",
+			Key:         event.AggregateID,
+			Payload:     []byte(event.Payload),
+			Headers:     outCarrier,
+		}
+
+		// 4. Publicar el mensaje en el Broker
+		err := r.publisher.Publish(eventCtx, msg)
 		if err != nil {
 			log.Printf("[OutboxRelayer] Error enviando evento %s: %v\n", event.ID, err)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			span.End()
 			_ = r.outboxRepo.MarkAsFailed(ctx, event.ID)
 			continue
 		}
+
+		span.SetStatus(codes.Ok, "event published successfully")
+		span.End()
 
 		if err := r.outboxRepo.MarkAsProcessed(ctx, event.ID); err != nil {
 			log.Printf("[OutboxRelayer] Error actualizando estado %s: %v\n", event.ID, err)
 		}
 	}
 }
+

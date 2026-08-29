@@ -5,6 +5,8 @@ import (
 
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain"
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/ports"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type CreateAccountUseCase struct {
@@ -16,23 +18,19 @@ func NewCreateAccountUseCase(repo ports.AccountRepository) *CreateAccountUseCase
 }
 
 func (c CreateAccountUseCase) Execute(ctx context.Context, input *domain.CreateAccountRequest) (*domain.Account, error) {
-	/*tr := otel.Tracer("payment-service")
+	tr := otel.Tracer("payments_ingestor")
 	ctx, span := tr.Start(ctx, "payment.create_account")
-	defer span.End(*/
+	defer span.End()
 
 	account := input.NewDomainAccount()
 
 	err := c.repo.CreateAccount(ctx, account)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 
-	/*err := u.ledgerRepo.CreateAccount(ctx, account)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		return err
-	}
-	span.SetSt tus(codes.Ok, "account created successfully")*/
+	span.SetStatus(codes.Ok, "account created successfully")
 	return account, nil
 }

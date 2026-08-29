@@ -61,7 +61,7 @@ func (r *LedgerRepository) ProcessPayment(ctx context.Context, accountID string,
 			WithLogContext("account_id", accountID)
 	}
 
-	tr := otel.Tracer("payment-service")
+	tr := otel.Tracer("payments_ingestor")
 	ctx, span := tr.Start(ctx, "payment.repository.execute_transaction")
 	defer span.End()
 
