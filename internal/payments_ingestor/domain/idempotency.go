@@ -9,14 +9,14 @@ const (
 )
 
 type IdempotencyRecord struct {
-	Key          string    `gorm:"primaryKey;type:varchar(255)"`
-	Status       string    `gorm:"type:varchar(50);not null"`
-	ResponseCode int       `gorm:"not null"`
-	ResponseBody []byte    `gorm:"type:bytea"`
-	RequestID    string    `gorm:"type:varchar(255)"`
 	CreatedAt    time.Time `gorm:"not null"`
 	UpdatedAt    time.Time `gorm:"not null"`
 	ExpiresAt    time.Time `gorm:"index;not null"`
+	Key          string    `gorm:"primaryKey;type:varchar(255)"`
+	Status       string    `gorm:"type:varchar(50);not null"`
+	RequestID    string    `gorm:"type:varchar(255)"`
+	ResponseBody []byte    `gorm:"type:bytea"`
+	ResponseCode int       `gorm:"not null"`
 }
 
 func (r *IdempotencyRecord) IsProcessing() bool {

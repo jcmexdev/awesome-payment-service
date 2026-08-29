@@ -6,12 +6,12 @@ import (
 )
 
 type LedgerEntry struct {
+	CreatedAt time.Time `gorm:"not null"`
 	ID        string    `gorm:"primaryKey;type:varchar(255)"`
 	AccountID string    `gorm:"index;type:varchar(255);not null"`
-	Amount    int64     `gorm:"not null"` // in cents: positive = credit, negative = debit
 	Type      string    `gorm:"type:varchar(50);not null"`
 	RequestId string    `gorm:"uniqueIndex;type:varchar(255);not null"`
-	CreatedAt time.Time `gorm:"not null"`
+	Amount    int64     `gorm:"not null"`
 }
 
 func (a *Account) Validate() error {

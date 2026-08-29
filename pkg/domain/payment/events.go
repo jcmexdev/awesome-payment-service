@@ -2,15 +2,6 @@ package payment
 
 import "time"
 
-type PaymentStatus string
-
-const (
-	StatusCreated    PaymentStatus = "CREATED"
-	StatusProcessing PaymentStatus = "PROCESSING"
-	StatusSettled    PaymentStatus = "SETTLED"
-	StatusFailed     PaymentStatus = "FAILED"
-)
-
 type TransitionEvent string
 
 const (
@@ -21,8 +12,8 @@ const (
 
 // DTO del Evento para SQS / Stream
 type CreatedEvent struct {
-	PaymentID string    `json:"payment_id"`
-	Amount    int64     `json:"amount"`
-	Currency  string    `json:"currency"`
 	CreatedAt time.Time `json:"created_at"`
+	PaymentID string    `json:"payment_id"`
+	Currency  string    `json:"currency"`
+	Amount    int64     `json:"amount"`
 }

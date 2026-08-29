@@ -6,14 +6,23 @@ import (
 	"time"
 )
 
+type PaymentStatus string
+
+const (
+	StatusCreated    PaymentStatus = "CREATED"
+	StatusProcessing PaymentStatus = "PROCESSING"
+	StatusSettled    PaymentStatus = "SETTLED"
+	StatusFailed     PaymentStatus = "FAILED"
+)
+
 type Payment struct {
-	ID        string        `gorm:"primaryKey;type:varchar(255)"`
-	AccountID string        `gorm:"index;type:varchar(255);not null"`
-	Amount    int64         `gorm:"not null;default:0"`
-	Currency  string        `gorm:"type:varchar(3);not null"`
-	Status    PaymentStatus `gorm:"type:varchar(15);not null"`
 	CreatedAt time.Time     `gorm:"not null"`
 	UpdatedAt time.Time     `gorm:"not null"`
+	ID        string        `gorm:"primaryKey;type:varchar(255)"`
+	AccountID string        `gorm:"index;type:varchar(255);not null"`
+	Currency  string        `gorm:"type:varchar(3);not null"`
+	Status    PaymentStatus `gorm:"type:varchar(15);not null"`
+	Amount    int64         `gorm:"not null;default:0"`
 }
 
 // NewPayment creates and initializes a new Payment instance.
