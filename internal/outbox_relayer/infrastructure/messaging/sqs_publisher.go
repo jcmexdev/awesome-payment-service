@@ -37,7 +37,7 @@ func (s *SQSPublisher) Publish(ctx context.Context, msg ports.Message) error {
 		QueueUrl:    aws.String(s.queueURL),
 		MessageBody: aws.String(string(msg.Payload)),
 	}
-
+	
 	if len(msg.Headers) > 0 {
 		msgAttributes := make(map[string]types.MessageAttributeValue, len(msg.Headers))
 		for k, v := range msg.Headers {

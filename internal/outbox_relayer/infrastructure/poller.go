@@ -53,7 +53,9 @@ func (r *OutboxRelayer) Start(ctx context.Context) {
 }
 
 func (r *OutboxRelayer) processPendingEvents(ctx context.Context) {
-	events, err := r.outboxRepo.FetchPendingEvents(ctx, r.batchSize)
+	maxAttempts := 3
+	baseIntervalSeconds := 10
+	events, err := r.outboxRepo.FetchAndLockPendingEvents(ctx, r.batchSize, baseIntervalSeconds, maxAttempts)
 	if err != nil {
 		log.Printf("[OutboxRelayer] Error al consultar eventos: %v\n", err)
 		return
@@ -70,6 +72,7 @@ func (r *OutboxRelayer) processPendingEvents(ctx context.Context) {
 		// 1. Extraer y reconstruir el contexto distribuido de OTel desde TraceContext
 		eventCtx := ctx
 		carrier := propagation.MapCarrier{}
+
 		if len(event.TraceContext) > 0 {
 			if err := json.Unmarshal(event.TraceContext, &carrier); err == nil {
 				eventCtx = otel.GetTextMapPropagator().Extract(ctx, carrier)
@@ -83,15 +86,18 @@ func (r *OutboxRelayer) processPendingEvents(ctx context.Context) {
 				attribute.String("messaging.system", "sqs"),
 				attribute.String("messaging.destination", "payments-queue"),
 				attribute.String("messaging.message_id", event.ID),
-				attribute.String("aggregate.type", event.AggregateType),
+				attribute.String("aggregate.type", event.AggregateType.ToString()),
 				attribute.String("aggregate.id", event.AggregateID),
-				attribute.String("event.type", event.EventType),
+				attribute.String("event.type", event.EventType.ToString()),
 			),
 		)
 
 		// 3. Inyectar contexto activo en las cabeceras del mensaje hacia el Broker downstream
 		outCarrier := propagation.MapCarrier{}
 		otel.GetTextMapPropagator().Inject(eventCtx, outCarrier)
+
+		outCarrier["event_id"] = event.ID
+		outCarrier["event_type"] = event.EventType.ToString()
 
 		msg := ports.Message{
 			Destination: "payments-queue",
@@ -107,7 +113,9 @@ func (r *OutboxRelayer) processPendingEvents(ctx context.Context) {
 			span.RecordError(err)
 			span.SetStatus(codes.Error, err.Error())
 			span.End()
-			_ = r.outboxRepo.MarkAsFailed(ctx, event.ID)
+			if event.Attempts == maxAttempts {
+				_ = r.outboxRepo.MarkAsFailed(ctx, event.ID)
+			}
 			continue
 		}
 
@@ -119,4 +127,3 @@ func (r *OutboxRelayer) processPendingEvents(ctx context.Context) {
 		}
 	}
 }
-

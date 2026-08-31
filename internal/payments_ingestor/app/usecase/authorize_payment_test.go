@@ -8,26 +8,26 @@ import (
 
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/app/usecase"
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain"
-	"github.com/jcmexdev/payment-service/pkg/domain/payment"
+	pkgDomain "github.com/jcmexdev/payment-service/pkg/domain"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 type mockPaymentsRepo struct {
-	createdPayment *payment.Payment
+	createdPayment *pkgDomain.Payment
 }
 
-func (m *mockPaymentsRepo) CreatePayment(ctx context.Context, p *payment.Payment) error {
+func (m *mockPaymentsRepo) CreatePayment(ctx context.Context, p *pkgDomain.Payment) error {
 	m.createdPayment = p
 	return nil
 }
 
 type mockOutboxRepo struct {
-	createdEvent *payment.OutboxEvent
+	createdEvent *pkgDomain.OutboxEvent
 }
 
-func (m *mockOutboxRepo) Create(ctx context.Context, event *payment.OutboxEvent) error {
+func (m *mockOutboxRepo) Create(ctx context.Context, event *pkgDomain.OutboxEvent) error {
 	m.createdEvent = event
 	return nil
 }
@@ -102,7 +102,7 @@ func TestAuthorizePaymentUseCase_PersistsPaymentAndOutboxWithTraceContext(t *tes
 	if event.EventType != "payment.created" {
 		t.Errorf("expected EventType 'payment.created', got %s", event.EventType)
 	}
-	if event.Status != payment.OutboxStatusPending {
+	if event.Status != pkgDomain.OutboxStatusPending {
 		t.Errorf("expected Status 'PENDING', got %s", event.Status)
 	}
 

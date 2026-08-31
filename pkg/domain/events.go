@@ -1,4 +1,4 @@
-package payment
+package domain
 
 import "time"
 
@@ -10,7 +10,6 @@ const (
 	EventFail            TransitionEvent = "FAILED"
 )
 
-// DTO del Evento para SQS / Stream
 type CreatedEvent struct {
 	CreatedAt time.Time `json:"created_at"`
 	PaymentID string    `json:"payment_id"`

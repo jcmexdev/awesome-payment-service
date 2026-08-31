@@ -9,19 +9,23 @@ import (
 
 	"github.com/jcmexdev/payment-service/internal/outbox_relayer/infrastructure"
 	"github.com/jcmexdev/payment-service/internal/outbox_relayer/ports"
-	"github.com/jcmexdev/payment-service/pkg/domain/payment"
+	"github.com/jcmexdev/payment-service/pkg/domain"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 type mockOutboxRelayRepo struct {
-	events          []payment.OutboxEvent
-	processedIDs    []string
-	failedIDs       []string
+	events       []domain.OutboxEvent
+	processedIDs []string
+	failedIDs    []string
 }
 
-func (m *mockOutboxRelayRepo) FetchPendingEvents(ctx context.Context, limit int) ([]payment.OutboxEvent, error) {
+func (m *mockOutboxRelayRepo) FetchAndLockPendingEvents(ctx context.Context, batchSize int, baseIntervalSeconds int, maxAttempts int) ([]domain.OutboxEvent, error) {
+	return m.events, nil
+}
+
+func (m *mockOutboxRelayRepo) FetchPendingEvents(ctx context.Context, limit int) ([]domain.OutboxEvent, error) {
 	return m.events, nil
 }
 
@@ -56,19 +60,19 @@ func TestOutboxRelayer_ExtractsTraceContextAndPropagates(t *testing.T) {
 	}
 	traceBytes, _ := json.Marshal(traceMap)
 
-	event := payment.OutboxEvent{
+	event := domain.OutboxEvent{
 		ID:            "event-123",
 		AggregateType: "PAYMENT",
 		AggregateID:   "pay-abc",
 		EventType:     "payment.created",
 		Payload:       []byte(`{"id":"pay-abc","amount":1000}`),
 		TraceContext:  traceBytes,
-		Status:        payment.OutboxStatusPending,
+		Status:        domain.OutboxStatusPending,
 		CreatedAt:     time.Now().UTC(),
 	}
 
 	repo := &mockOutboxRelayRepo{
-		events: []payment.OutboxEvent{event},
+		events: []domain.OutboxEvent{event},
 	}
 	publisher := &mockPublisher{}
 

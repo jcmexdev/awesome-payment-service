@@ -9,7 +9,7 @@ import (
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/constants"
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/errors"
 	"github.com/jcmexdev/payment-service/internal/payments_ingestor/domain/ports"
-	"github.com/jcmexdev/payment-service/pkg/domain/payment"
+	pkgDomain "github.com/jcmexdev/payment-service/pkg/domain"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
@@ -25,12 +25,12 @@ func NewAuthorizePaymentUseCase(paymentsRepo ports.PaymentsRepository, outboxRep
 	return &AuthorizePaymentUseCase{paymentsRepo: paymentsRepo, outboxRepo: outboxRepo, uow: uow}
 }
 
-func (a AuthorizePaymentUseCase) Execute(ctx context.Context, in *domain.AuthorizePaymentRequest) (*payment.Payment, error) {
+func (a AuthorizePaymentUseCase) Execute(ctx context.Context, in *domain.AuthorizePaymentRequest) (*pkgDomain.Payment, error) {
 	tr := otel.Tracer("payments_ingestor")
 	ctx, span := tr.Start(ctx, "payment.authorize_payment")
 	defer span.End()
 
-	newPayment, err := payment.NewPayment(uuid.NewString(), in.Amount, in.Currency, in.AccountID)
+	newPayment, err := pkgDomain.NewPayment(uuid.NewString(), in.Amount, in.Currency, in.AccountID)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -58,14 +58,14 @@ func (a AuthorizePaymentUseCase) Execute(ctx context.Context, in *domain.Authori
 		traceContextBytes = []byte("{}")
 	}
 
-	outboxEvent := payment.NewOutboxEvent(
+	outboxEvent := pkgDomain.NewOutboxEvent(
 		uuid.NewString(),
-		"PAYMENT",
+		pkgDomain.AggregateTypePayment,
 		newPayment.ID,
-		"payment.created",
+		pkgDomain.EventTypePaymentCreated,
 		payloadBytes,
 		traceContextBytes,
-		payment.OutboxStatusPending,
+		pkgDomain.OutboxStatusPending,
 	)
 
 	err = a.uow.Do(ctx, func(ctx context.Context) error {

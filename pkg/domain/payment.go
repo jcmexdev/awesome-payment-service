@@ -1,18 +1,9 @@
-package payment
+package domain
 
 import (
 	"errors"
 	"fmt"
 	"time"
-)
-
-type PaymentStatus string
-
-const (
-	StatusCreated    PaymentStatus = "CREATED"
-	StatusProcessing PaymentStatus = "PROCESSING"
-	StatusSettled    PaymentStatus = "SETTLED"
-	StatusFailed     PaymentStatus = "FAILED"
 )
 
 type Payment struct {
@@ -25,10 +16,6 @@ type Payment struct {
 	Amount    int64         `gorm:"not null;default:0"`
 }
 
-// NewPayment creates and initializes a new Payment instance.
-// It validates that the payment ID is non-empty and the amount is greater than zero.
-// Returns a pointer to the Payment initialized with a StatusCreated status and current UTC timestamps,
-// or an error if the validation fails.
 func NewPayment(id string, amount int64, currency, accountId string) (*Payment, error) {
 	if id == "" || amount <= 0 {
 		return nil, errors.New("datos de pago inválidos")
@@ -38,14 +25,10 @@ func NewPayment(id string, amount int64, currency, accountId string) (*Payment, 
 		AccountID: accountId,
 		Amount:    amount,
 		Currency:  currency,
-		Status:    StatusCreated,
+		Status:    PaymentStatusCreated,
 		CreatedAt: time.Now().UTC(),
 		UpdatedAt: time.Now().UTC(),
 	}, nil
-}
-
-func (*Payment) TableName() string {
-	return "payments"
 }
 
 func (p *Payment) TransitionTo(event TransitionEvent) error {
@@ -57,4 +40,8 @@ func (p *Payment) TransitionTo(event TransitionEvent) error {
 	p.Status = nextStatus
 	p.UpdatedAt = time.Now().UTC()
 	return nil
+}
+
+func (*Payment) TableName() string {
+	return "payments"
 }
