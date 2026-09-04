@@ -34,17 +34,35 @@ services:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=us-east-1
-    entrypoint: /bin/sh
-    command: >
-      -c "
-      echo 'Esperando a que Floci responda...';
-      until aws --endpoint-url=http://floci:4566 sqs list-queues > /dev/null 2>&1; do
-        sleep 1;
-      done;
-      echo 'Floci listo. Creando cola payments-queue...';
-      aws --endpoint-url=http://floci:4566 sqs create-queue --queue-name payments-queue;
-      echo 'Cola creada exitosamente.';
-      "
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - |
+        echo "Esperando a que Floci esté listo..."
+        until aws --endpoint-url=http://floci:4566 sqs list-queues > /dev/null 2>&1; do
+          sleep 1
+        done
+        
+        echo "1. Creando Dead Letter Queue (payments-dlq)..."
+        aws --endpoint-url=http://floci:4566 sqs create-queue --queue-name payments-dlq
+        
+        echo "2. Obteniendo ARN de la DLQ..."
+        DLQ_ARN=$$(aws --endpoint-url=http://floci:4566 sqs get-queue-attributes \
+          --queue-url http://floci:4566/000000000000/payments-dlq \
+          --attribute-names QueueArn \
+          --query 'Attributes.QueueArn' \
+          --output text)
+        
+        echo "DLQ ARN obtenido: $$DLQ_ARN"
+        
+        echo "3. Creando payments-queue (VisibilityTimeout=5s)..."
+        aws --endpoint-url=http://floci:4566 sqs create-queue \
+          --queue-name payments-queue \
+          --attributes "{
+            \"VisibilityTimeout\": \"5\",
+            \"RedrivePolicy\": \"{\\\"deadLetterTargetArn\\\":\\\"$$DLQ_ARN\\\",\\\"maxReceiveCount\\\":\\\"3\\\"}\"
+          }"
+        
+        echo "Colas creadas e inicializadas con éxito."
     depends_on:
       floci:
         condition: service_healthy
