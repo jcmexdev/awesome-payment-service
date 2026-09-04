@@ -3,6 +3,7 @@ package messaging
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -26,6 +27,8 @@ func NewSQSPublisher(ctx context.Context, client SQSClientAPI, queueName string)
 	result, err := client.GetQueueUrl(ctx, &sqs.GetQueueUrlInput{
 		QueueName: aws.String(queueName),
 	})
+
+	log.Printf("XXxxxxxxxxxxxxxxxxxx %s", *result.QueueUrl)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo URL de la cola %s: %w", queueName, err)
 	}
@@ -37,7 +40,7 @@ func (s *SQSPublisher) Publish(ctx context.Context, msg ports.Message) error {
 		QueueUrl:    aws.String(s.queueURL),
 		MessageBody: aws.String(string(msg.Payload)),
 	}
-	
+
 	if len(msg.Headers) > 0 {
 		msgAttributes := make(map[string]types.MessageAttributeValue, len(msg.Headers))
 		for k, v := range msg.Headers {

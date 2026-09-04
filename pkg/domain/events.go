@@ -6,7 +6,7 @@ type TransitionEvent string
 
 const (
 	EventStartProcessing TransitionEvent = "START_PROCESSING"
-	EventSettle          TransitionEvent = "SETTLED"
+	EventSettled         TransitionEvent = "SETTLED"
 	EventFail            TransitionEvent = "FAILED"
 )
 

@@ -86,6 +86,7 @@ services:
       - POLL_INTERVAL_MS=1000
       - AWS_REGION=us-east-1
       - SQS_ENDPOINT=http://floci:4566
+      - SQS_QUEUE_URL=http://floci:4566/000000000000/payments-queue
       - SQS_QUEUE_NAME=payments-queue
       - OTEL_COLLECTOR_ADDR=otel-collector:4317
       - OTEL_SERVICE_NAME=outbox_relayer
@@ -96,6 +97,29 @@ services:
         condition: service_healthy
       sqs-init:
         condition: service_completed_successfully
+    networks:
+      - payment_network
+  
+  events-consumer:
+    build:
+      context: .
+      dockerfile: ./build/events_consumer/Dockerfile # Ajusta la ruta a tu Dockerfile
+    container_name: events_consumer
+    environment:
+      - ENVIRONMENT=development
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
+      - SQS_REGION=us-east-1
+      - SQS_ENDPOINT=http://floci:4566
+      - SQS_QUEUE_URL=http://floci:4566/000000000000/payments-queue
+      - OTEL_COLLECTOR_ADDR=otel-collector:4317
+      - OTEL_SERVICE_NAME=events_consumer
+    depends_on:
+      postgres:
+        condition: service_healthy
+      floci:
+        condition: service_healthy
+      sqs-init:
+        condition: service_completed_successfully # Espera a que la cola se cree automáticamente
     networks:
       - payment_network
 

@@ -12,7 +12,7 @@ var allowedTransitions = map[PaymentStatus]map[TransitionEvent]PaymentStatus{
 		EventFail:            PaymentStatusFailed,
 	},
 	PaymentStatusProcessing: {
-		EventSettle: PaymentStatusSettled,
-		EventFail:   PaymentStatusFailed,
+		EventSettled: PaymentStatusSettled,
+		EventFail:    PaymentStatusFailed,
 	},
 }
